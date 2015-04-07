@@ -1,0 +1,17 @@
+{
+    "name": "zeekee/forge",
+    "description": "Various stand-alone classes used by Zeekee Interactive",
+    "keywords": ["anvil", "html", "email", "calendar", "database"],
+    "type": "library",
+    "homepage": "http://www.zeekee.com",
+    "license": "BSD Style",
+    "authors": [
+        {
+            "name": "zeekee/Zeekee Contributors",
+            "homepage": "https://github.com/zeekee/Zeekee/graphs/contributors"
+        }
+    ],
+    "autoload": {
+        "classmap": ["./"]
+    }
+}

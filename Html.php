@@ -99,6 +99,10 @@ class Html
         return $this;
     }
 
+    /**
+     * set the tag value
+     * 
+     */ 
     public function tag($name = null)
     {
         $this->setTag($name);
@@ -341,7 +345,7 @@ class Html
                 }
             }            
         }
-
+        $this->_attributes = $attributes;
     }
 
     /**
@@ -387,13 +391,6 @@ class Html
      */
     public function render()
     {
-        $text;
-
-
-        // optimize attributes
-        // 
-        // 
-
         if (!empty($this->_tag)) {
 
             $this->optimizeAttributeOrder();
@@ -488,14 +485,11 @@ class Html
     }
 
     /**
-     * set value of element 
      * 
-     * @param string $value [string for value]
-     * 
-     * @return  Html
+     * @ignore
      *
      */
-    public function setValue($value)
+    private function setValue($value)
     {        
         if($value != strip_tags($value)) {
             // contains HTML and should not be encoded.
@@ -506,7 +500,16 @@ class Html
         return $this;
     }
 
+    /**
+     * set value of element 
+     * 
+     * @param string $value [string for value]
+     * 
+     * @return  Html
+     *
+     */
     public function value($value) {
+
         $this->setValue($value);
         return $this;
     }

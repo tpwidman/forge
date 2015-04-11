@@ -342,14 +342,6 @@ class Html
             }            
         }
 
-        echo '<pre>';
-        print_r($attributes);
-        echo '</pre>';
-
-        echo "thats' all";
-
-        exit;
-
     }
 
     /**

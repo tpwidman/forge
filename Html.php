@@ -345,7 +345,7 @@ class Html
                 }
             }            
         }
-        $this->_attributes = $attributes;
+        $this->_attributes = array_merge($this->_attributes, $attributes);
     }
 
     /**

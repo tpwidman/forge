@@ -69,12 +69,12 @@ class Anvil
                 {   
                     $nLoop++;               
                     if ( $nLoop <= $nTemp ) {
-                        $aReturn[$nCols][] = $aValue;
+                        $aReturn[$nCols][$nId] = $aValue;
 
                     } else {    
                         $nLoop = 1;   
                         $nCols++;
-                        $aReturn[$nCols][] = $aValue;         
+                        $aReturn[$nCols][$nId] = $aValue;         
                     }                
                 }            
             } else {        
@@ -82,11 +82,11 @@ class Anvil
                 foreach ( $aArray AS $nId => $aValue ) {   
                     $nLoop++;               
                     if ( $nLoop <= $nCols ) {                        
-                        $aReturn[$nLoop][] = $aValue;            
+                        $aReturn[$nLoop][$nId] = $aValue;            
                     } else {
                         $nLoop = 0;   
                         $nLoop++;
-                        $aReturn[$nLoop][] = $aValue;
+                        $aReturn[$nLoop][$nId] = $aValue;
                     }            
                 }
             }       

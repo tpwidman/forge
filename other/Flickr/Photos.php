@@ -1,5 +1,5 @@
 <?php
-namespace zeekee\other\Flickr;
+namespace zeekee\forge\other\Flickr;
 
 class Photos extends Flickr
 {

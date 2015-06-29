@@ -818,17 +818,31 @@ class Email
 
         $headers = 'X-Priority: ' . $this->_priority . $eol;
         $headers .= 'X-Mailer: ' . $this->_mailer . $eol;
-        $headers .= 'From: ' . $this->_fromname . ' <' . $this->_from . '>' . $eol;
 
-        if ( sizeof ( $this->_cc ) > 0 ) {
-            $headers .= 'Cc: '. implode( ' ,' , $this->_cc ) . $eol;
+        if (empty($this->_fromname)) { 
+            $headers .= 'From: ' . $this->_from . $eol;
+            $headers .= 'Reply-To: ' . $this->_from . $eol;
+        } else { 
+            $headers .= 'From: ' . $this->_fromname . ' <' . $this->_from . '>' . $eol;
+            $headers .= 'Reply-To: ' . $this->_fromname . ' <' . $this->_from . '>' . $eol;
         }
 
-        if ( sizeof ( $this->_bcc ) > 0 ) {
-            $headers .= 'Bcc: '. implode( ' ,' , $this->_bcc ) . $eol;
+        if (is_array($this_cc)) { 
+            $headers .= 'Cc: '. implode( ' ,' , $this->_cc ) . $eol;            
+        } else { 
+            if (strlen($this->_cc) > 0) { 
+                $headers .= 'Cc: '. $this->_cc . $eol;            
+            }
         }
 
-        $headers .= 'Reply-To: ' . $this->_fromname . ' <' . $this->_from . '>' . $eol;
+        if (is_array($this_bcc)) { 
+            $headers .= 'Bcc: '. implode( ' ,' , $this->_bcc ) . $eol;            
+        } else { 
+            if (strlen($this->_bcc) > 0) { 
+                $headers .= 'Bcc: '. $this->_bcc . $eol;            
+            }
+        }
+        
         $headers .= 'Return-Path: ' . $this->_from . $eol;
         !empty( $this->_sender ) ? $headers .= 'Sender: ' . $this->_sender . $eol : $headers .= 'Sender: ' . $this->_from . $eol;
         !empty( $this->_sender ) ? $headers .= 'X-Sender: ' . $this->_sender . $eol : $headers .= 'X-Sender: ' . $this->_from . $eol;

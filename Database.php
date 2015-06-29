@@ -219,9 +219,32 @@ class Database
         'password' => $this->dbPass
         );
     }
+
+    /**
+     * 
+     * 
+     */ 
+    public function fillVariables($table, &$variables) 
+    {
+
+        $columns = array();
+        $columns = $this->describeTable($table);
+        foreach ($columns AS $key => $array) {
+            if (!array_key_exists( $key, $variables)) {
+                $array['Null'] == 'NO' ? $variables[ $key ] = $array['Default'] : false;                        
+                (empty( $variables[$array['Field']] ) && substr( $array['Type'], 0, 3 ) == 'int') ? $variables[$array['Field']] = 0 : false;
+                (empty( $variables[$array['Field']] ) && $array['Type'] == 'datetime') ? $variables[$array['Field']] = '0000-00-00 00:00:00' : false;            
+                (empty( $variables[$array['Field']] ) && $array['Type'] == 'date') ? $variables[$array['Field']] = '0000-00-00' : false;            
+            } else {
+                (empty( $variables[$array['Field']] ) && substr( $array['Type'], 0, 3 ) == 'int') ? $variables[$array['Field']] = 0 : false;            
+                (empty( $variables[$array['Field']] ) && $array['Null'] == 'NO') ? $variables[$array['Field']] = $array['Default'] : false;
+            }
+        }
+    }
+
     
     /**
-     * [db_split_sql]
+     * split the string into the component sql calls.
      * 
      * @param  string $sql [string to be parsed into smaller sql statements.]
      * @return [type]      [description]
@@ -327,7 +350,7 @@ class Database
     public function insert($table, $variables)
     {    
         is_object($variables) ? $variables = (array) $variables : false;
-
+        $this->fillVariables($table, $variables);
         $sql = $this->buildQuery($table, 'insert', $variables);
         $fields = $this->setVariables($sql, $variables);
         $sth = $this->runQuery($sql, $fields->vars);
@@ -359,6 +382,31 @@ class Database
     {
         return $this->dbh->lastInsertId();
     }
+
+    /**
+     * [loadRecords]
+     * @param  string $sql    [the query to run]
+     * @param  array  $params [the parameters to bind to the query string.]
+     * @return mixed
+     */
+    public function loadRecords($sql, $params = array())
+    {
+        try {
+            $sth = $this->dbh->prepare($sql);
+            if (!$sth) {
+                echo "\nPDO::errorInfo():\n";
+                print_r($dbh->errorInfo());
+            }
+            $sth->execute($params);
+            return $sth->fetchAll(\PDO::FETCH_OBJ);           
+        } catch ( \PDOException $e) {
+            return $e->getCode() . ':' . $e->getMessage();
+        } catch ( \Exception $e ) {
+            return $e->getCode() . ':' . $e->getMessage();
+        }
+    }       
+
+
 
     /**
      * this commits the change to the database performs an insert 

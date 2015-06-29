@@ -1390,12 +1390,22 @@ class Anvil
     }    
 
     /**
+     *  generate a random letter
+     * 
+     * @return string 
+     */ 
+    public function randomLetter() 
+    {
+        return chr(97 + mt_rand(0, 25));
+    }
+
+    /**
      * replace UTF-8 characters for a safe string is ISO environments.
      * 
      * @param  string $string [the string to be converted.]
      * @return string
      */
-    public function replaceUTF8Chars ($string)
+    public function replaceUTF8Chars($string)
     {
 
         $search = array(chr(0xe2) . chr(0x80) . chr(0x98),

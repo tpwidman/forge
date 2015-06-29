@@ -4,7 +4,7 @@ This is a collection of stand-alone classes that Zeekee Inc. utilizes in various
 
 for full documentation of the class
 
-http://www.zeekee.com/support/docs/namespaces/default.html
+https://zeekeeinteractive.com/support/phpclasses/forge/
 
 ## Classes
 

@@ -619,6 +619,34 @@ class Database
     }
 
     /**
+     * [sqlQuery]
+     * @param  string $sql    [the query to run]
+     * @param  array  $params [the parameters to bind to the query string.]
+     * @return mixed
+     */
+    public function sqlQuery($sql, $params = array())
+    {
+        try {
+            $sth = $this->dbh->prepare($sql);
+            if (!$sth) {
+                echo "\nPDO::errorInfo():\n";
+                print_r($dbh->errorInfo());
+            }
+            $sth->execute($params);
+
+            if ($sth->rowCount() == 1) {
+                return $sth->fetch(\PDO::FETCH_OBJ);
+            } else {
+                return $sth->fetchAll(\PDO::FETCH_OBJ);
+            }
+        } catch ( \PDOException $e) {
+            return $e->getCode() . ':' . $e->getMessage();
+        } catch ( \Exception $e ) {
+            return $e->getCode() . ':' . $e->getMessage();
+        }
+    }   
+
+    /**
     * pre-defined to run a sql update command
     * 
     * @param  string $table     [the table to update]

@@ -208,7 +208,7 @@ class Calendar extends \DateTime
         $month = array();
         $month['long_name'] = date('F', $time);
         $month['long_number'] = date('m', $time);
-        $month['short_name'] = date('F', $time);
+        $month['short_name'] = date('M', $time);
         $month['short_number'] = date('n', $time);
         $month['number_of_days'] = date('t', $time);
         $month['year'] = date('Y', $time);

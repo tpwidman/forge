@@ -28,7 +28,6 @@ class TWBootstrap
         
     }   
 
-
     /**
      * 
      * return a well-formed HTML mark-up to insert an alert
@@ -37,15 +36,13 @@ class TWBootstrap
      * 
      * @return string
      */ 
-    public function alert($message, $type = 'success')
-    {
+    public function alert($message, $type = 'success', $id = '')
+    {        
         if ($type != 'success' && $type != 'warning' && $type != 'danger') {
             $type = 'success';
         }
-        $string = '<div class="alert alert-' . $type . ' alert-dismissible fade in flash" id="' . $type . 'Alert" role="alert">';
-        $string .= '<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>';
-        $string .= '<div id="' . $type . 'AlertMessage">' . $message . '</div></div>';
+        empty($id) ? $id = $type . 'Alert' : false;
+        $string = '<div class="alert alert-' . $type . ' alert-dismissible fade in flash" id="' . $id . '" role="alert">' . $message . '</div>';
         return $string;
     }
-
 }

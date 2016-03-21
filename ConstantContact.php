@@ -9,7 +9,7 @@
  * 
  */ 
 
-namespace Zeekee;
+namespace zeekee;
 
 use Ctct\ConstantContact AS CC;
 use Ctct\Components\Contacts\Contact AS Contact;
@@ -68,16 +68,32 @@ class ConstantContact
      * 
      * 
      */ 
-    public function addContact($listId, $email, $firstName, $lastName, $additional = array())
+    public function addContact($email, $firstName, $lastName, $lists = array(), $additional = array(), $actualUser = true)
     {
         try {
-            $contact = new Contact();
-            $contact->addEmail($email);
-            $contact->addList($listId);
-            $contact->first_name = $firstName;
-            $contact->last_name = $lastName;
             
-            $this->cc->addContact($this->accessToken, $contact);
+            $contact = new Contact();
+            
+            $contact->addEmail($email);
+
+            foreach ($lists as $v) { 
+                $contact->addList($v);
+            }
+        
+            $contact->first_name = $firstName;
+            
+            $contact->last_name = $lastName;
+
+            !empty($additional['company']) ? $contact->company_name = $additional['company'] : false;
+
+            !empty($additional['job_title']) ? $contact->job_title = $additional['job_title'] : false;
+
+            !empty($additional['work_phone']) ? $contact->work_phone = $additional['work_phone'] : false;
+
+            //$contact->addAddress(Address::create( array("address_type"=>"BUSINESS","line1"=>$street,"city"=>$city,"state"=>$state,"postal_code"=>$zip)));
+            
+            $this->cc->addContact($this->accessToken, $contact, $actualUser);
+            
             return true;
         
         } catch (CtctException $ex) {

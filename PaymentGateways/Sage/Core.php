@@ -29,7 +29,7 @@ class Core
 
     protected $mKey = '';
     protected $mId = '';
-    protected $applicationId = '';
+    protected $applicationId = 'ZEEKTYFO1000000WMSYABY3USEN';
     protected $verb = 'POST';
    
     public $debug = 0;

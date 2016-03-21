@@ -55,8 +55,7 @@ class Ecommerce extends Core
     	$this->setAuthenticationHeader($xml);
 
 		$response = $this->curlPOST($this->getServer() . $this->getEndpoint(), $xml, $this->getHeaders());    	
-
-
+        
         echo 'RAW<br/>';
         echo htmlentities($response);
         echo '<hr />';

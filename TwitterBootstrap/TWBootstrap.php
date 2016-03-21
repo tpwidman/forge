@@ -36,7 +36,7 @@ class TWBootstrap
      * 
      * @return string
      */ 
-    public function alert($message, $type = 'success', $id = '')
+    public static function alert($message, $type = 'success', $id = '')
     {        
         if ($type != 'success' && $type != 'warning' && $type != 'danger') {
             $type = 'success';

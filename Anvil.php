@@ -322,6 +322,80 @@ class Anvil
     /**
      * post data in fields to url
      * 
+     * @param  string $cUrl   [URL]
+     * @return boolean 
+     */
+    public static function curl($url, $data, $headers = array(), $method = 'GET', $debug = 0)
+    {
+
+        $curlHeaders = array();
+
+        if (sizeof($headers) > 0) {
+            foreach($headers as $key => $value) { 
+                $curlHeaders[] = "$key: $value";
+            }                    
+        }
+
+        if (is_array($headers)) { 
+            if (strpos($headers['Content-Type'], 'xml') > 0 ) {
+                $query = $data;
+            } else { 
+                $query = http_build_query($data, '', '&');    
+            }
+        } else { 
+            $query = http_build_query($data, '', '&');
+        }
+
+        
+        $ch = curl_init();                  // URL of gateway for cURL to post to
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+        (strtoupper(substr(PHP_OS, 0, 3) == 'WIN')) ? curl_setopt($ch, CURLOPT_CAINFO, 'C:\WINNT\curl-ca-bundle.crt') : false;        
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);        
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $curlHeaders); 
+    
+        if ($method == 'POST') {
+            curl_setopt($ch, CURLOPT_POST, 1);                
+            curl_setopt($ch, CURLOPT_POSTFIELDS, trim($query));            
+        }
+
+        if ($debug) { 
+            curl_setopt($ch, CURLOPT_HEADER, 1); // set to 0 to eliminate header info from response       
+            curl_setopt($ch, CURLINFO_HEADER_OUT, true);
+        } else { 
+            curl_setopt($ch, CURLOPT_HEADER, 0); // set to 0 to eliminate header info from response       
+            curl_setopt($ch, CURLINFO_HEADER_OUT, false);
+        }
+        
+        $response = curl_exec($ch);    
+
+        if ($debug) { 
+            $headerSent = curl_getinfo($ch, CURLINFO_HEADER_OUT);
+        }
+                
+        if (!$response) {
+            $response = curl_error($ch) . '::' . curl_errno($ch); 
+        }    
+
+        curl_close($ch);     
+        echo '<pre>';
+        print_r($headerSent);
+
+        echo '<br />data:' . $query;
+
+        echo '<hr />';
+
+        echo $response;
+
+        return $response;
+    }
+
+
+
+    /**
+     * post data in fields to url
+     * 
      * @param  string $cUrl     [URL to post]
      * @param  mixed string|array $cFields  [array or string of values to post]
      * @param  string &$cResult [string reference to pass back any errors]
@@ -1957,8 +2031,11 @@ class Anvil
             }
             ob_end_clean();
         } else {
-            if (substr(trim(strtolower($f)), 0, 4) == 'http') {
+            if (substr(trim(strtolower($f)), 0, 4) == 'http' 
+                || substr(trim(strtolower($f)), 0, 5) == 'https') {
+                
                 $cReturn = file_get_contents($f);
+            
             }
         }
 
@@ -1966,7 +2043,8 @@ class Anvil
     }
 
     /**
-     * split a string into the an array with each row as a substring to a specific length.
+     * split a string into the an array with each row as a substring to a 
+     * specific length.
      * 
      * @param  string $cString [string to split]
      * @param  integer $nLen [length of individual string, default = 72]
@@ -2403,7 +2481,7 @@ class Anvil
      * @param  integer $nPermission [numerical representation of file permissions.]
      * @return boolean TRUE/FALSE if file was stored 
      */
-    public static function writeToFile($cContent = '', $cPath = '', $cMode = 'w+', $nPermission = 0777)
+    public static function writeToFile($cContent = '', $cPath = '', $cMode = 'w+', $nPermission = 0775)
     {    
         self::mkdirs(dirname($cPath));
         if ($fp = @ fopen(trim($cPath), $cMode)) {

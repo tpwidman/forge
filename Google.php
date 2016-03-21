@@ -41,13 +41,14 @@ class Google
     public function getAddressLonLat($address = '', $city = '', $state = '', $zip = '', $country = 'US')
     {
 
-        $return = array('lon' => '', 'lat' => '');
+        $return = array('lon' => '0.00000', 'lat' => '0.00000');
         $input = array();
         !empty($address) ? $input[] = urlencode($address) : false;
         !empty($city) ? $input[] = urlencode($city) : false;
         !empty($state) ? $input[] = urlencode($state) : false;
         !empty($zip) ? $input[] = urlencode($zip) : false;
         !empty($country) ? $input[] = urlencode($country) : false;
+
         $map = file_get_contents('http://maps.googleapis.com/maps/api/geocode/json?address=' . implode(',+', $input) . '&sensor=true');
 
         $array = json_decode($map, true);
@@ -69,6 +70,7 @@ class Google
         $return = array();
         $map = file_get_contents('http://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($address) . '&sensor=true');
         $array = json_decode($map, true);
+        $return['raw'] = json_encode($array);
         $return['lat'] = $array['results'][0]['geometry']['location']['lat'];
         $return['lon'] = $array['results'][0]['geometry']['location']['lng'];
         foreach ($array['results'][0]['address_components'] as $k => $arr) {

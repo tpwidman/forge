@@ -148,6 +148,43 @@ class Calendar extends \DateTime
         return $days;
     }
 
+
+    /**
+     * 
+     * 
+     * 
+     */ 
+    public function getBusinessDays($time, $end) { 
+
+        $time = strtotime($time);
+        $end = strtotime($end);
+
+        $loop = 0;
+        $count =0;
+        while ($time < $end)
+        {
+            $loop++;
+            $day_of_week = date("N", $time) - 1; // 0 = Monday, 6 = Sunday
+
+            if ($day_of_week >= 0 && $day_of_week <= 5) { 
+
+                if ($this->isHoliday(date("m/d", $time))) { 
+                    $celebrate = $this->getHoliday(date("m/d", $time));                            
+                    if ($celebrate->type != 'National Holiday') { 
+                        $count++;
+                    }
+                } else { 
+                    $count++;
+                }
+            }
+        
+            $time = strtotime("+1 day", $time); // add one day to time
+
+            if( $loop == 1000) { break; }
+        }
+        return $count;
+    }
+
     /**
      * return the week number the day appears on.
      * 
@@ -159,9 +196,10 @@ class Calendar extends \DateTime
     public function getWeekNumber($date)
     {
         if ($this->standard == 'US') {
-            $week = date('W', strtotime($date));
-            $dayOfWeek = date('w', strtotime($date));
-            ($dayOfWeek == 0) ? $week++ : false;            
+            $week = date('W', strtotime($date));            
+            $dayOfWeek = date('w', strtotime($date));            
+            ($dayOfWeek == 0) ? $week++ : false;     
+            ($week == 54) ? $week = 1 : false;
         } else {
             $week = date('W', strtotime($date));
         }
@@ -304,29 +342,77 @@ class Calendar extends \DateTime
 
     }
 
+    public function isHoliday($date, $type = 'all')
+    {
+        
+        $date = date('m/d', strtotime($date));
+        $days = $this->listHolidays($type);
+
+        if (array_key_exists($date, $days)) { 
+            return true;
+        } else { 
+            return false;
+        }
+    }
+
+    public function getHoliday($date, $type = 'all')
+    {
+        $date = date('m/d', strtotime($date));
+        $days = $this->listHolidays($type);
+        if (array_key_exists($date, $days)) { 
+            return (object) $days[$date];
+        } else { 
+            return (object) array('name' => '', 'reason' => '', 'moreinfo' => '', 'type' => '');
+        }        
+    }
+
+
     /**
      * @ignore
      * 
      */
-    private function holidays()
+    public function listHolidays($type = 'all')
     {
 
-            $global = array(
-                '1/1' => array('name' => 'New Years Day', 'reason' => '', 'moreinfo' => '', 'type' => 'National Holiday'),
-                '12/31' => array('name' => 'Last Day of the Year', 'reason' => '', 'moreinfo' => '', 'type' => 'National Holiday'),
-                );
-            $christian = array(
-                );
+        $type = strtolower(trim($type));
 
-            $usa = array(
-                '7/14' => array('name' => 'Independence Day', 'reason' => '', 'moreinfo' => '', 'type' => 'National Holiday'),
-                'last thursday of november' => array('name' => 'Thanksgiving Day', 'reason' => '', 'moreinfo' => '', 'type' => 'National Holiday'),
-                '12/7' => array('name' => 'Pearl Harbor Day', 'reason' => '', 'moreinfo' => '', 'type' => 'National Holiday'),
-                );
+        $holidays = array();
 
-            $islam = array();
+        $global = array(
+            '01/01' => array('name' => 'New Years Day', 'reason' => '', 'moreinfo' => '', 'type' => 'National Holiday'),
+            '12/31' => array('name' => 'Last Day of the Year', 'reason' => '', 'moreinfo' => '', 'type' => 'National Holiday'),
+        );
+        
+        $christian = array(
+            '12/24' => array('name' => 'New Years Day', 'reason' => '', 'moreinfo' => '', 'type' => 'National Holiday'),
+            '12/25' => array('name' => 'Last Day of the Year', 'reason' => '', 'moreinfo' => '', 'type' => 'National Holiday'),
+        );
+
+        $usa = array(
+            '07/14' => array('name' => 'Independence Day', 'reason' => '', 'moreinfo' => '', 'type' => 'National Holiday'),
+            date('m/d', strtotime('last thursday of november ' . $this->year)) => array('name' => 'Thanksgiving Day', 'reason' => '', 'moreinfo' => '', 'type' => 'National Holiday'),
+            '12/07' => array('name' => 'Pearl Harbor Day', 'reason' => '', 'moreinfo' => '', 'type' => 'Government Holiday'),
+        );
+
+        $islam = array();
+
+        $chinese = array();
             
-            $hebrew = array();
+        $hebrew = array();
+
+        if ($type == 'global' || $type == 'all') { 
+            $holidays = array_merge($global, $holidays);
+        }
+
+        if ($type == 'christian' || $type == 'all') { 
+            $holidays = array_merge($christian, $holidays);
+        }
+
+        if ($type == 'usa' || $type == 'all') { 
+            $holidays = array_merge($usa, $holidays);
+        }
+
+        return $holidays;
         
     }
 

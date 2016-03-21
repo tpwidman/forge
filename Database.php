@@ -438,7 +438,6 @@ class Database
      */
     public function runQuery($sql, $params = array())
     {
-
         $sql = preg_replace("/[\r\n|\n]/", ' ', $sql);
         $sql = preg_replace("/\s+/", ' ', trim($sql));        
         // ensure that only 
@@ -455,7 +454,10 @@ class Database
                 echo "\nPDO::errorInfo():\n";
                 print_r($this->errorInfo());
             }
-            $sth->execute($matches);            
+            $sth->execute($matches);     
+
+            $err = $sth->errorInfo();
+            
             return $sth;
         } catch ( \PDOException $e) {
             return $e->getCode() . ':' . $e->getMessage();

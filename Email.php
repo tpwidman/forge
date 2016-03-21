@@ -17,7 +17,7 @@ class Email
      * @access private
      * @var string
      */
-    private $_mailer = 'FOONSTER TECHNOLOGY EMAIL MODULE 6.5.3';
+    private $_mailer = 'ZEEKEE EMAIL MODULE 6.5.3';
 
     private $vars = array();
     /**

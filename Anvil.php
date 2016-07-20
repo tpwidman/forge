@@ -93,6 +93,25 @@ class Anvil
         }              
         return $aReturn;
     } 
+
+    /**
+     * 
+     * 
+     * 
+     * 
+     */
+     
+    public static function escapeCsvVariable($string, $optionalEscape = '')
+    {
+        if (preg_match("/[\,\"]/", $string)) { 
+            $string = str_replace('"', '\"', $string);
+            $string = '"' . $string . '"';
+            return $string;
+        } else { 
+            return $string;
+        }
+
+    }
     
     /**
      * determine if attribute is currently assigned to this object.
@@ -328,6 +347,8 @@ class Anvil
     public static function curl($url, $data, $headers = array(), $method = 'GET', $debug = 0)
     {
 
+        $output = array();
+
         $curlHeaders = array();
 
         if (sizeof($headers) > 0) {
@@ -369,26 +390,20 @@ class Anvil
         }
         
         $response = curl_exec($ch);    
-
+        $output = new StdClass();
+        
         if ($debug) { 
-            $headerSent = curl_getinfo($ch, CURLINFO_HEADER_OUT);
+            $output = (object) curl_getinfo($ch);
+            $output->headerSent = curl_getinfo($ch, CURLINFO_HEADER_OUT);
         }
                 
         if (!$response) {
-            $response = curl_error($ch) . '::' . curl_errno($ch); 
+            $output->response = curl_error($ch) . '::' . curl_errno($ch); 
+        } else { 
+            $output->response = $response;    
         }    
 
-        curl_close($ch);     
-        echo '<pre>';
-        print_r($headerSent);
-
-        echo '<br />data:' . $query;
-
-        echo '<hr />';
-
-        echo $response;
-
-        return $response;
+        return $output;
     }
 
 
@@ -495,9 +510,7 @@ class Anvil
      */
     public function decodeValue($string, $key)
     {
-
         $result = '';
-
         for ($i=1; $i<=strlen($string); $i++) {
 
             $char = substr($string, $i-1, 1);
@@ -505,9 +518,7 @@ class Anvil
             $char = chr(ord($char)-ord($keychar));
             $result.=$char;
         }
-
         return $result;
-
     }
 
     /**
@@ -516,9 +527,10 @@ class Anvil
      * @param  string  $directory [path to directory]
      * @param  string  $extension [limit look up to this file extension]
      * @param  boolean $full_path [return full path information]
+     * @param  boolean $recursive [perform a lookup for the full list]
      * @return array
      */
-    public function directoryToArray($directory, $extension = '', $full_path = true)
+    public function directoryToArray($directory, $extension = '', $full_path = true, $recursive = true)
     {
 
         $array_items = array();
@@ -526,7 +538,9 @@ class Anvil
             while (false !== ($file = readdir($handle))) {
                 if ($file != '.' && $file != '..') {
                     if (is_dir($directory. '/' . $file)) {
-                        $array_items = array_merge($array_items, $this->directoryToArray($directory. '/' . $file, $extension, $full_path));
+                        if ($recursive) { 
+                            $array_items = array_merge($array_items, $this->directoryToArray($directory. '/' . $file, $extension, $full_path));
+                        }                        
                     } else {
                         if (!$extension || (preg_match("/." . $extension . '/', $file))) {
                             if ($full_path) {
@@ -538,13 +552,9 @@ class Anvil
                     }
                 }
             }
-
             closedir($handle);
-
             return $array_items;
-
         }
-
     }
 
     /**
@@ -616,7 +626,7 @@ class Anvil
     public static function encryptString($cString, $cSalt = 'th3ra1ninsp@1ns@ysMainly1nth3pl#3n',  $cMethod = 'SHA512')
     {
 
-        $cMethod = 'CRYPT_' . $cMethod;
+        $cMethod = 'CRYPT_' . strtoupper($cMethod);
         $nLoop = intval(date('Hms', strtotime($cSalt)));
         $cString = trim($cString);
 
@@ -626,11 +636,9 @@ class Anvil
             return str_replace(substr($cSalt, 0, 2), '', crypt($cString, substr($cSalt, 0, 2)));
         } elseif ($cMethod == 'CRYPT_EXT_DES') {
             $cSalt = $this->scrubVar($cSalt);
-
             return str_replace('_F6..' . substr($cSalt, 0, 4), '', crypt($cString, '_F6..' . substr($cSalt, 0, 4)));
         } elseif ($cMethod == 'CRYPT_BLOWFISH') {
             $cSalt = $this->scrubVar($cSalt);
-
             return str_replace('$2a$06$' . $cSalt .'$', '', crypt($cString, '$2a$06$' . $cSalt .'$'));
 
         } elseif ($cMethod == 'CRYPT_SHA256') {
@@ -650,7 +658,7 @@ class Anvil
      * @return string
      */
     public static function extractDomainName($cString)
-    {
+    {        
         $aUrl = parse_url($cString);
         return preg_replace('/^(?:.+?\.)+(.+?\.(?:co\.uk|com|net|edu|gov|org))(\:[0-9]{2,5})?\/*.*$/is', '$1', $aUrl['host']);
     }
@@ -793,12 +801,50 @@ class Anvil
     }
 
     /**
+    * 
+    * 
+    * 
+    */ 
+    function getRecordByTag($array, $tag = '') 
+    { 
+        !is_array($array) ? $array = (array) $array : false;
+        $return = array();        
+            foreach ($array as $n => $value) {
+                if (preg_match("/$tag/is", $value->tags)) { 
+                    return (object) $value;                
+                    break;
+                }            
+            }
+        
+    }
+
+    /**
+    * This searches an array to locate all the records that
+    * have the provided tag in the record.
+    * 
+    * @param $array The array to be searched
+    * @param $tag The tag to look for
+    * @param $limit the limit of matches that should be returned.
+    * 
+    * @return array : the array of records from the original array
+    */ 
+    function getRecordsByTag($array, $tag = '', $limit = 999) 
+    { 
+        $return = array();
+        !is_array($array) ? $array = (array) $array : false;        
+            foreach ($array as $n => $value) {
+                if (preg_match("/$tag/is", $value['tags'])) { 
+                    $return[] = $value;
+                }            
+            }        
+        return $return;
+    }
+
+
+    /**
      * return a formatted timestamp
      * 
      * @param  string $cFormat [what format to use]
-     * 
-     * 
-     * 
      * 
      * @return string
      */
@@ -889,7 +935,8 @@ class Anvil
     }
 
   /**
-   * test for valid email address provided.
+   * a simple test to ensure that the provided string is a valid email address.
+   * 
    * @param  string  $email     [string to be validated]
    * @param  boolean $lDNSCheck [if true, perform DNS check to ensure domain is valid.]
    * 
@@ -1931,6 +1978,8 @@ class Anvil
             return preg_replace('/[^A-Za-z\s]/', '', $value);
         } elseif ($cType == 'TOKEN') {
             return preg_replace('%[^A-Za-z0-9\\\-\_\/]%', '', $value);
+        } elseif ($cType == 'PHONE_NUM') {
+            return preg_replace('%[^A-Za-z0-9\-\.\)\(\)\ ]%', '', $value);
         } elseif ($cType == 'ALPHA_NUM') {
             return preg_replace('/[^A-Za-z0-9]/', '', $value);            
         } elseif ($cType == 'SIMPLE') {
@@ -2514,4 +2563,42 @@ class Anvil
             }
         }
     }
+
+    /**
+     * [createXml description]
+     * @param  string $startTag [description]
+     * @param  array $array    [description]
+     * @return string           [description]
+     */
+    protected function XMLCreate($startTag, $array)
+    {
+        $xml = new \XmlWriter();
+        $xml->openMemory();
+        $xml->startDocument('1.0', 'utf-8');
+        $xml->startElement($startTag);
+        $this->XMLWrite($xml, $array);
+        $xml->endElement();
+        return $xml->outputMemory(true);
+    }
+
+    /**
+     * [writeXml]
+     * @param  XMLWriter $xml  : Standard XMLWriter Class
+     * @param  array
+     * @return string
+     */
+    protected function XMLWrite(\XMLWriter $xml, $data)
+    {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $xml->startElement($key);
+                $this->XMLWrite($xml, $value);
+                $xml->endElement();
+                continue;
+            }
+            $xml->writeElement($key, $value);
+        }
+    }
+
+
 }

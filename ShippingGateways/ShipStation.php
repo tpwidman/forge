@@ -8,7 +8,7 @@
  * that you are responsible for any charges incurred by using the Google API.  We always ensure
  * our clients have proper licensing
  */  
-class Ups
+class ShipStation
 {
 
     /**

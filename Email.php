@@ -168,9 +168,7 @@ class Email
      */
     public function addFileAttachment($aArray = null)
     {
-        if (is_array($aArray)) {
-            $this->_attachments[] = $aArray;
-        }
+        $this->_attachments[] = $aArray;        
         return $this;
     }
 
@@ -229,9 +227,17 @@ class Email
      * 
      * @return Email
     */
-    public function bcc($text)
+    public function bcc($emailAddress)
     {
-        $this->_bcc = $text;
+        $this->_bcc = array();
+        if (strpos($emailAddress, ',') > 0 || strpos($emailAddress, ';') > 0) {
+            $aSplit = preg_split( '/[,|;]/' , $emailAddress);
+            foreach ($aSplit AS $cValue) {
+                $this->isAddressValid ( $cValue ) ? $this->_bcc[] = $cValue : false;
+            }
+        } else {
+            $this->isAddressValid ($cEmail) ? $this->_bcc[] = $cEmail : false;
+        }
         return $this;
     }
 
@@ -240,9 +246,17 @@ class Email
      * 
      * @return Email
     */
-    public function cc($text)
+    public function cc($emailAddress)
     {
-        $this->_cc = $text;
+        $this->_cc = array();
+        if (strpos($emailAddress, ',') > 0 || strpos($emailAddress, ';') > 0) {
+            $aSplit = preg_split( '/[,|;]/' , $emailAddress);
+            foreach ($aSplit AS $cValue) {
+                $this->isAddressValid ( $cValue ) ? $this->_cc[] = $cValue : false;
+            }
+        } else {
+            $this->isAddressValid ($cEmail) ? $this->_cc[] = $cEmail : false;
+        }
         return $this;
     }
 
@@ -491,7 +505,7 @@ class Email
      * 
      * @return Email
      */ 
-    public function message($cValue = NULL, $cType = 'TEXT', $cChar = NULL, $cContent = NULL)
+    public function message($cValue = NULL, $cType = 'HTML', $cChar = NULL, $cContent = NULL)
     {
 
         if ($cContent != NULL) {
@@ -536,6 +550,7 @@ class Email
         if (is_numeric($nValue) && $nValue >= 1 && $nValue <= 5) {
             $this->_priority = $nValue;
         }
+        return $this;
     }
 
     /**
@@ -827,16 +842,20 @@ class Email
             $headers .= 'Reply-To: ' . $this->_fromname . ' <' . $this->_from . '>' . $eol;
         }
 
-        if (is_array($this_cc)) { 
-            $headers .= 'Cc: '. implode( ' ,' , $this->_cc ) . $eol;            
+        if (is_array($this->_cc)) { 
+            if (sizeof($this->_cc) > 0) {
+                $headers .= 'Cc: '. implode( ' ,' , $this->_cc ) . $eol;            
+            }
         } else { 
             if (strlen($this->_cc) > 0) { 
                 $headers .= 'Cc: '. $this->_cc . $eol;            
             }
         }
 
-        if (is_array($this_bcc)) { 
-            $headers .= 'Bcc: '. implode( ' ,' , $this->_bcc ) . $eol;            
+        if (is_array($this->_bcc)) { 
+            if (sizeof($this->_bcc) > 0) {
+                $headers .= 'Bcc: '. implode( ' ,' , $this->_bcc ) . $eol;            
+            }
         } else { 
             if (strlen($this->_bcc) > 0) { 
                 $headers .= 'Bcc: '. $this->_bcc . $eol;            
@@ -848,14 +867,12 @@ class Email
         !empty( $this->_sender ) ? $headers .= 'X-Sender: ' . $this->_sender . $eol : $headers .= 'X-Sender: ' . $this->_from . $eol;
         $headers .= 'X-Originating-Email: ' . $this->_from . $eol;
 
-        if ( is_array( $this->_headers ) ) {
-
+        if (is_array( $this->_headers)) {
             foreach ($this->_headers AS $c => $v) {
-
+                if (!empty($v)) {
                 $headers .= $c . ': ' . $v . $eol;
-
+                }
             }
-
         }
 
         $headers .= 'MIME-Version: 1.0' . $eol; // here is the line in question
@@ -934,21 +951,32 @@ class Email
 
                 } else {
 
-                    if ( file_exists( $aValue['path'] ) ) {
+                    if (is_array($aValue)) { 
 
-                        $bin = @ fopen( $aValue['path'] , 'rb' );
-                        $data = @ fread( $bin , filesize( $aValue['path'] ) );
-                        @ fclose( $bin );
+                        if ( file_exists( $aValue['path'] ) ) {
+                            $bin = @ fopen( $aValue['path'] , 'rb' );
+                            $data = @ fread( $bin , filesize( $aValue['path'] ) );
+                            @ fclose( $bin );
+                            $msg .= "--$cMiMeBoundry" . $eol;
+                            $msg .= 'Content-Type: application/octet-stream;';
+                            !empty( $aValue['name'] ) ? $msg .= ' name="' . $aValue['name'] . '"' . $eol : $msg .= ' name="' . basename( $aValue['path'] ) . '"' . $eol;
+                            $msg .= 'Content-Transfer-Encoding: base64' . $eol;
+                            $msg .= 'Content-Disposition: attachment;' . $eol . $eol;
+                            $msg .= chunk_split( base64_encode( $data ) ) . $eol . $eol;
+                        }
 
-                        $msg .= "--$cMiMeBoundry" . $eol;
-                        $msg .= 'Content-Type: application/octet-stream;';
-
-                        !empty( $aValue['name'] ) ? $msg .= ' name="' . $aValue['name'] . '"' . $eol : $msg .= ' name="' . basename( $aValue['path'] ) . '"' . $eol;
-
-                        $msg .= 'Content-Transfer-Encoding: base64' . $eol;
-                        $msg .= 'Content-Disposition: attachment;' . $eol . $eol;
-                        $msg .= chunk_split( base64_encode( $data ) ) . $eol . $eol;
-
+                    } else { 
+                        if ( file_exists( $aValue) ) {
+                            $bin = @ fopen( $aValue , 'rb' );
+                            $data = @ fread( $bin , filesize( $aValue ) );
+                            @ fclose( $bin );
+                            $msg .= "--$cMiMeBoundry" . $eol;
+                            $msg .= 'Content-Type: application/octet-stream;';
+                            $msg .= ' name="' . basename( $aValue ) . '"' . $eol;
+                            $msg .= 'Content-Transfer-Encoding: base64' . $eol;
+                            $msg .= 'Content-Disposition: attachment;' . $eol . $eol;
+                            $msg .= chunk_split( base64_encode( $data ) ) . $eol . $eol;
+                        }
                     }
 
                 }
@@ -1047,7 +1075,7 @@ class Email
 
         }
 
-        ini_set( sendmail_from , $this->_from );
+        ini_set(sendmail_from , $this->_from);
 
         if ( strtoupper( substr( PHP_OS , 0 , 3 ) != 'WIN' ) ) {
             $headers .= $msg;
@@ -1055,8 +1083,8 @@ class Email
         }
 
         // need to add imap mail function
-
-        if ( mail($this->_to, $this->_subject, $msg, $headers, "-f " . $this->_from)) {
+        
+        if (mail($this->_to, $this->_subject, $msg, $headers, "-f " . $this->_from)) {
             return true;
         } else {
             if ( !$this->isAddressValid( $this->_to ) ) {

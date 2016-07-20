@@ -73,9 +73,11 @@ class Google
         $return['raw'] = json_encode($array);
         $return['lat'] = $array['results'][0]['geometry']['location']['lat'];
         $return['lon'] = $array['results'][0]['geometry']['location']['lng'];
-        foreach ($array['results'][0]['address_components'] as $k => $arr) {
-            $return[$arr['types'][0]] = $arr['long_name'];
-        }      
+        if (is_array($array['results'][0]['address_components'])) {
+            foreach ($array['results'][0]['address_components'] as $k => $arr) {
+                $return[$arr['types'][0]] = $arr['long_name'];
+            }      
+        }
         $return['county'] = trim(str_replace('County', '', $return['administrative_area_level_2']));
         $return['state'] = $return['administrative_area_level_1'];
 

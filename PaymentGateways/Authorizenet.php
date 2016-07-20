@@ -17,6 +17,9 @@ class Authorizenet
 
     private $debug = 1;
 
+    // $cLogin = '4uN77tP7'; // foonster credentials
+    // $cPassword ='7p2748HH3Ad79SjB'; // foonster credentials
+
     public $_response = array(); 
 
     private $xmlHeaders = array(
@@ -131,6 +134,11 @@ class Authorizenet
 
     }
 
+    /**
+     * 
+     * 
+     * 
+     */ 
     public function ARBGetSubscriptionStatus($id)
     {
 
@@ -148,11 +156,38 @@ class Authorizenet
 
         $return = $this->curlPost($this->server, $xml, $this->xmlHeaders);
 
-        echo htmlentities($return);
+        //echo htmlentities($return);
 
         //return simplexml_load_string($return);
 
     }
+
+    /**
+     * 
+     * 
+     * 
+     * 
+     */ 
+    public function ARBGetSubscription($args = array())
+    {
+        $array = array(
+        'merchantAuthentication' => 
+            array(
+                'name' => $this->subscriptionXml['merchantAuthentication']['name'], 
+                'transactionKey' => $this->subscriptionXml['merchantAuthentication']['transactionKey']),       
+        'refId' => $args['refId'],
+        'subscriptionId' => $args['subscriptionId']);
+
+        $xml = $this->xmlCreate('ARBGetSubscriptionRequest', $array);        
+
+        $xml = str_replace('<ARBGetSubscriptionRequest>','<ARBGetSubscriptionRequest xmlns="AnetApi/xml/v1/schema/AnetApiSchema.xsd">', $xml);
+
+        $return = $this->curlPost($this->server, $xml, $this->xmlHeaders);
+
+        return simplexml_load_string($return);
+
+    }
+
 
     /**
      * 
@@ -483,6 +518,74 @@ class Authorizenet
 
     }
 
+
+
+    /**
+     * This request generates a list of subscriptions. The table below describes the input
+     * Element Description
+     * searchType Values include:
+        * cardExpiringThisMonth
+        *  subscriptionActive
+        * subscriptionInactive
+        * subscriptionExpiringThisMonth
+    sorting Contains sorting information.
+        * orderBy Order of transactions in response:
+        * id
+        * name
+        * status
+        * createTimeStampUTC
+        * lastName
+        * firstName
+        * accountNumber (ordered by last 4 digits only)
+        *  amount
+        * pastOccurences
+        * orderDescending Value: true, false, 1 or 0.
+    Format: Boolean
+    paging Contains information about list pages.
+     limit Value: 1-1000
+    Notes: The number of subscriptions per page.
+     offset Value: 1-10000
+    Notes: The number of pages
+     * 
+     */ 
+    public function ARBGetSubscriptionList($args = array())
+    {
+
+        // set search type
+        $searchType = 'subscriptionActive';
+
+        $searchTypes = array('cardExpiringThisMonth', 
+            'subscriptionActive', 
+            'subscriptionInactive', 
+            'subscriptionExpiringThisMonth');
+        
+        in_array($args['searchType'], $searchTypes) ? $searchType = $args['searchType'] : false;
+
+        $array = array(
+        'merchantAuthentication' => 
+            array(
+                'name' => $this->subscriptionXml['merchantAuthentication']['name'], 
+                'transactionKey' => $this->subscriptionXml['merchantAuthentication']['transactionKey']),       
+        'searchType' => $searchType,
+        'sorting' => 
+            array(
+                'orderBy' => 'id', 
+                'orderDescending' => 'false'),       
+        'paging' => 
+            array(
+                'limit' => '1000', 
+                'offset' => '1'),       
+        );
+        $xml = $this->xmlCreate('ARBGetSubscriptionListRequest', $array);        
+        $xml = str_replace('<ARBGetSubscriptionListRequest>','<ARBGetSubscriptionListRequest xmlns="AnetApi/xml/v1/schema/AnetApiSchema.xsd">', $xml);
+        $return = $this->curlPost($this->server, $xml, $this->xmlHeaders);
+        
+        $xml = simplexml_load_string($return);
+
+        return $xml->subscriptionDetails->subscriptionDetail;
+
+    }
+
     /**
      * 
      * 
@@ -531,6 +634,12 @@ class Authorizenet
         return simplexml_load_string($return);
     }
 
+    /**
+     * 
+     * 
+     * 
+     * 
+     */ 
     public function getTransactionListRequest($id)
     {
 
@@ -547,6 +656,12 @@ class Authorizenet
         return simplexml_load_string($return);
     }
 
+
+    /**
+     * 
+     * 
+     * 
+     */ 
     public function getTransactionDetailsRequest($id)
     {
 

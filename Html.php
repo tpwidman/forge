@@ -410,7 +410,14 @@ class Html
             } else {
                 $text = '<' . $this->_tag;
                 foreach ($this->_attributes as $k => $v) {
-                    $text .= ' ' . $k . '="' . str_replace('"', '\"', $v) . '"';
+                    // special case for required attribute
+                    if ($k == 'required') { 
+                        if ($v == 1 || $v == 'required' || $v == 'true' || $v == true) { 
+                            $text .= ' ' . $k . '="' . str_replace('"', '\"', $v) . '"';
+                        }
+                    } else { 
+                        $text .= ' ' . $k . '="' . str_replace('"', '\"', $v) . '"';                        
+                    }
                 }
                 if (in_array($this->_tag, $this->_singletonTags)) {
                     $text .= ' value="' . $this->_value . '" />';

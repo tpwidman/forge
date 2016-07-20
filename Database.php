@@ -81,6 +81,7 @@ class Database
         $limit > 0 ? $limit = " LIMIT $limit" : $limit = '';
 
         $tableinfo = $sth->fetchAll(\PDO::FETCH_ASSOC);
+
         // add field names by name
         foreach ($tableinfo as $key => $array) {
             strtoupper($array['Key']) == 'PRI' ? $primary = $array['Field'] : false;
@@ -638,12 +639,15 @@ class Database
 
             if ($sth->rowCount() == 1) {
                 return $sth->fetch(\PDO::FETCH_OBJ);
-            } else {
+            } else {            
                 return $sth->fetchAll(\PDO::FETCH_OBJ);
             }
         } catch ( \PDOException $e) {
+            echo $e->getCode() . ':' . $e->getMessage();
             return $e->getCode() . ':' . $e->getMessage();
+
         } catch ( \Exception $e ) {
+            echo $e->getCode() . ':' . $e->getMessage();
             return $e->getCode() . ':' . $e->getMessage();
         }
     }   

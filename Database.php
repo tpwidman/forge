@@ -227,20 +227,33 @@ class Database
      */ 
     public function fillVariables($table, &$variables) 
     {
-
         $columns = array();
         $columns = $this->describeTable($table);
+
         foreach ($columns AS $key => $array) {
-            if (!array_key_exists( $key, $variables)) {
-                $array['Null'] == 'NO' ? $variables[ $key ] = $array['Default'] : false;                        
-                (empty( $variables[$array['Field']] ) && substr( $array['Type'], 0, 3 ) == 'int') ? $variables[$array['Field']] = 0 : false;
+            
+            if (!array_key_exists($key, $variables)) {
+
+                ($array['Null'] == 'NO' && $variables[$array['Field']]) ? $variables[$key] = $array['Default'] : false;                        
+                
+                if ($array['Null'] == 'NO' && empty(trim($variables[$array['Field']]))) {
+                    empty($array['Default']) ? $variables[$key] = '' : $variables[$key] = $array['Default'];
+                } else {                     
+                    if (empty(trim($variables[$array['Field']]))) { 
+                        !empty($array['Default']) ? $variables[$key] = "'" . $array['Default'] . "'" : $array['Default'] = '';
+                    } else { 
+                       $variables[$key] = "'" . trim($aVars[$array['Field']]) . "'";         
+                    }                    
+                }
+                (empty( $variables[$array['Field']] ) && preg_match("/int/is", $array['Type'])) ? $variables[$array['Field']] = 0 : false;                
+                (empty( $variables[$array['Field']] ) && $array['Type'] == 'date') ? $variables[$array['Field']] = '0000-00-00' : false;
                 (empty( $variables[$array['Field']] ) && $array['Type'] == 'datetime') ? $variables[$array['Field']] = '0000-00-00 00:00:00' : false;            
-                (empty( $variables[$array['Field']] ) && $array['Type'] == 'date') ? $variables[$array['Field']] = '0000-00-00' : false;            
+                                            
             } else {
                 (empty( $variables[$array['Field']] ) && substr( $array['Type'], 0, 3 ) == 'int') ? $variables[$array['Field']] = 0 : false;            
                 (empty( $variables[$array['Field']] ) && $array['Null'] == 'NO') ? $variables[$array['Field']] = $array['Default'] : false;
             }
-        }
+        }        
     }
 
     
@@ -251,7 +264,9 @@ class Database
      * @return [type]      [description]
      * 
      */
-    private function db_split_sql($sql) {
+    public function db_split_sql($sql) {
+
+        /*
         $sql = trim($sql);
         $sql = preg_replace("/\n#[^\n]*\n/", "\n", $sql);
         $buffer = array();
@@ -280,6 +295,25 @@ class Database
             $ret[] = $sql;
         }
         return($ret);
+        */
+       //delete comments
+        $lines = explode("\n",$sql);
+        $sql = '';
+        foreach($lines as $line){
+            $line = trim($line);
+            if( $line && !self::startsWith($line,'--') ){
+                $sql .= $line . "\n";
+            }
+        }
+
+        //convert to array
+        return explode(";", $sql);
+        
+    }
+
+    private function startsWith($haystack, $needle){
+        $length = strlen($needle);
+        return (substr($haystack, 0, $length) === $needle);
     }
 
     /**
@@ -351,12 +385,33 @@ class Database
     public function insert($table, $variables)
     {    
         is_object($variables) ? $variables = (array) $variables : false;
+        
         $this->fillVariables($table, $variables);
+        
         $sql = $this->buildQuery($table, 'insert', $variables);
+        
         $fields = $this->setVariables($sql, $variables);
+        
         $sth = $this->runQuery($sql, $fields->vars);
+
+
+        
+/*
+        echo '<pre>';
+
+        echo $sql . "\n";
+
+        print_r($fields);
+
+        echo '</pre>';
+
+        exit;
+  */      
         $err = $sth->errorInfo();
         if ($err[1] > 0) {
+
+            print_r($err);
+
             $this->error = $err[2];
             return 0;
         } else {
@@ -480,7 +535,8 @@ class Database
             $sth = $this->dbh->prepare($sql);
             if (!$sth) {
                 echo "\nPDO::errorInfo():\n";
-                print_r($dbh->errorInfo());
+                echo $sql;
+                print_r($this->dbh->errorInfo());
             }
             $sth->execute($params);
 
@@ -502,21 +558,20 @@ class Database
      * @param  string $sqlfile [path to .sql file]
      * 
      * @return none
-     * 
-     */
+     */ 
     public function runSourceCommand($sqlfile) {
-        $mqr = @get_magic_quotes_runtime();
-        @set_magic_quotes_runtime(0);
-        $query = fread(fopen( $sqlfile, 'r' ), filesize( $sqlfile ) );
-        @set_magic_quotes_runtime($mqr);
+        
+        $query = fread(fopen($sqlfile, 'r'), filesize($sqlfile));
+        
         $pieces  = $this->db_split_sql($query);
         for ($i=0; $i<count($pieces); $i++) {
             $pieces[$i] = trim($pieces[$i]);
             if(!empty($pieces[$i]) && $pieces[$i] != "#") {
-                $this->exec($pieces[$i]);
+                $this->runSql($pieces[$i]);
             }
         }
     }
+    
 
     
     /**
@@ -594,7 +649,7 @@ class Database
     public function showDatabases()
     {
         $array = array();
-        $sth = $this->prepare('SHOW databases');        
+        $sth = $this->dbh->prepare('SHOW databases');        
         $sth->execute();        
         $tableinfo = $sth->fetchAll(\PDO::FETCH_ASSOC);        
         foreach ($tableinfo as $key => $value) {            
@@ -612,11 +667,11 @@ class Database
     public function showTables()
     {
         $array = array();
-        $sth = $this->prepare('SHOW tables');        
+        $sth = $this->dbh->prepare('SHOW tables');        
         $sth->execute();        
         $tableinfo = $sth->fetchAll(\PDO::FETCH_ASSOC);        
         foreach ($tableinfo as $key => $value) {            
-            $array[] = $value['Tables_in_' . $this->dbName];
+            $array[] = $value['Tables_in_' . $this->database];
         }        
         return $array;
     }
@@ -633,7 +688,7 @@ class Database
             $sth = $this->dbh->prepare($sql);
             if (!$sth) {
                 echo "\nPDO::errorInfo():\n";
-                print_r($dbh->errorInfo());
+                print_r($sth->errorInfo());
             }
             $sth->execute($params);
 

@@ -8,7 +8,9 @@ class Payeezy
 
     private $server = 'https://api.payeezy.com/v1/transactions';
 
-    private $debug = 1;
+    public $currency_code = 'USD';
+
+    private $debug = 0;
 
     private $timestamp = 0;
 
@@ -97,6 +99,16 @@ class Payeezy
             'timestamp' => $this->timestamp);
     }    
 
+    public function getResponse()
+    {
+        return $this->_response;
+    }
+
+    public function debug($value)
+    {
+        $this->debug = $value;
+    }
+
     /**
      * @ignore
      */
@@ -128,7 +140,7 @@ class Payeezy
             $transaction_type == 'refund' && isset($args['transaction_tag'])) {
 
             $data = array(
-                "method" => $method_name,
+                "method" => $args['method_name'],
                 "transaction_type" => $transaction_type,
                 "amount" => $args['amount'],
                 "currency_code" => $args['currency_code'],
@@ -141,7 +153,7 @@ class Payeezy
                 'merchant_ref'=> $this->merchant_ref,
                 'transaction_type'=> $this->transaction_type,
                 'method'=> 'credit_card',
-                'amount'=> $this->amount,
+                'amount'=> preg_replace("/[^0-9]/", '', $this->amount),
                 'currency_code'=> $this->currency_code,
                 'credit_card'=> array(
                     'type'=> $this->credit_card->type,
@@ -226,6 +238,7 @@ class Payeezy
             } else { 
                 $return['response_code'] = 'UNKNOWN: '. $response['correlation_id'] . ' : ' . $response['transaction_status'];
             }
+            $return['raw'] = json_encode($response);
         }
 
         return $return;        
@@ -390,10 +403,32 @@ class Payeezy
     /**
      * 
      * 
+     * 
+     */
+    public function setCurrency($value = 'USD')
+    {
+        $this->currency_code = strtoupper(trim($value));
+        return $this;
+    } 
+
+    /**
+     * 
+     * 
+     */ 
+    public function setMerchantReference($value)
+    {
+        $this->merchant_ref = $value;
+        return $this;
+    }
+
+    /**
+     * 
+     * 
      */ 
     public function setMerchantToken($value)
     {
         $this->merchantToken = $value;
+        return $this;
     }
 
     /**

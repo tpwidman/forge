@@ -23,28 +23,28 @@ class Elavon
 
     private $urlAccount;
 
-    private $merchantId; //Converge ID as provided by Elavon
+    private $merchantId;                 // Converge ID as provided by Elavon
 
-    private $userId; //Converge user ID as configured on Converge (case sensitive)
+    private $userId;                     // Converge user ID as configured on Converge (case sensitive)
 
-    private $pin; // provided by Converge
+    private $pin;                        // provided by Converge
 
     private $payload = array(
-        'ssl_merchant_id' => '', // Converge ID as provided by Elavon
-        'ssl_user_id' => '', // Converge user ID as configured on Converge (case sensitive)
-        'ssl_pin' => '', // Converge PIN as generated within Converge (case sensitive)
-        'ssl_transaction_type' => '', // Transaction type
-        'ssl_show_form' => 'true' //
-        'ssl_card_number' => '', // Card number (required for hand-keyed transactions where the track data is not present
-        'ssl_exp_date' => '', // Expiration date (required to be used with card number on hand-keyed
-        'ssl_amount' => '', // Converge PIN as generated within Converge (case sensitive)        
+        'ssl_merchant_id' => '',         // Converge ID as provided by Elavon
+        'ssl_user_id' => '',             // Converge user ID as configured on Converge (case sensitive)
+        'ssl_pin' => '',                 // Converge PIN as generated within Converge (case sensitive)
+        'ssl_transaction_type' => '',    // Transaction type
+        'ssl_show_form' => 'true'        //
+        'ssl_card_number' => '',         // Card number (required for hand-keyed transactions where the track data is not present
+        'ssl_exp_date' => '',            // Expiration date (required to be used with card number on hand-keyed
+        'ssl_amount' => '',              // Converge PIN as generated within Converge (case sensitive)        
         );
 
     /**
      * 
      * @ignore
      */
-    public function __construct($merchandId, $userId, $pin, $mode = 'production')
+    public function __construct($merchantId, $userId, $pin, $mode = 'production')
     {
 
         $this->merchandId = $merchandId;

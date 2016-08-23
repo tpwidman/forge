@@ -2530,7 +2530,7 @@ class Anvil
      * @param  integer $nPermission [numerical representation of file permissions.]
      * @return boolean TRUE/FALSE if file was stored 
      */
-    public static function writeToFile($cContent = '', $cPath = '', $cMode = 'w+', $nPermission = 0775)
+    public static function writeToFile($cContent = '', $cPath = '', $cMode = 'w+', $nPermission = 0777)
     {    
         self::mkdirs(dirname($cPath));
         if ($fp = @ fopen(trim($cPath), $cMode)) {

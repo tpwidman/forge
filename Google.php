@@ -11,12 +11,17 @@
 class Google
 {
 
+
+    private $key;
+
+    private $sensor = 'true';
+
     /**
      * @ignore
      */
-    public function __construct()
+    public function __construct($key = '')
     {
-
+        $this->key = $key;
     }
 
     /**
@@ -49,7 +54,11 @@ class Google
         !empty($zip) ? $input[] = urlencode($zip) : false;
         !empty($country) ? $input[] = urlencode($country) : false;
 
-        $map = file_get_contents('http://maps.googleapis.com/maps/api/geocode/json?address=' . implode(',+', $input) . '&sensor=true');
+        $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . implode(',+', $input) . '&sensor=' . $this->sensor;
+
+        !empty($this->key) ? $url .= '&key=' . $this->key : false;
+
+        $map = file_get_contents($url);
 
         $array = json_decode($map, true);
         if ($array['status'] != 'ZERO_RESULTS') {
@@ -68,7 +77,12 @@ class Google
     public function getMapInformation($address = '')
     {
         $return = array();
-        $map = file_get_contents('http://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($address) . '&sensor=true');
+
+        $url = 'https://maps.googleapis.com/maps/api/geocode/json?address=' . urlencode($address) . '&sensor=' . $this->sensor;
+
+        !empty($this->key) ? $url .= '&key=' . $this->key : false;
+
+        $map = file_get_contents($url);
         $array = json_decode($map, true);
         $return['raw'] = json_encode($array);
         $return['lat'] = $array['results'][0]['geometry']['location']['lat'];
@@ -84,6 +98,29 @@ class Google
         return (object) $return;
     } 
 
+    /**
+     * 
+     * 
+     */
+    public function setApiKey($key = '') 
+    { 
+        $this->key = $key;
+    }
+
+    /**
+     * 
+     * 
+     */ 
+    public function setSensor($option = '') 
+    {
+
+        if (empty($option) || $option === false || strtolower(trim($option)) == 'false' || $option == 0) { 
+            $this->sensor = 'false';
+        } else { 
+            $this->sensor = 'true';
+        }
+
+    }
 
     /**
      * return an HTML image call to generate the 
@@ -104,6 +141,6 @@ class Google
     public static function qrCode($url, $altText = 'QR Code', $size = 250, $ec_level = 1, $margin = 0)
     {
         $url = urlencode($url);
-        return  '<img src="http://chart.apis.google.com/chart?chs=' . $size . 'x' . $size . '&cht=qr&chld=' . $ec_level.'|'.$margin . '&chl=' . $url . '" alt="' . $altText . '" widhtHeight="' . $size . '" widhtHeight="' . $size . '"/>';
+        return  '<img src="https://chart.apis.google.com/chart?chs=' . $size . 'x' . $size . '&cht=qr&chld=' . $ec_level.'|'.$margin . '&chl=' . $url . '" alt="' . $altText . '" widhtHeight="' . $size . '" widhtHeight="' . $size . '"/>';
     }
 }

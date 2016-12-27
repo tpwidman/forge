@@ -3,6 +3,9 @@
  * @author Nicolas Colbert <ncolbert@zeekee.com>
  * @copyright 2002 Zeekee Interactive
  */
+
+use \PHPMailer as PHPMailer;
+
 /**
  * A class that may be used to compose and send e-mail messages using 
  * the sendmail function within PHP/Server
@@ -17,7 +20,7 @@ class Email
      * @access private
      * @var string
      */
-    private $_mailer = 'ZEEKEE EMAIL MODULE 6.5.3';
+    //private $_mailer = 'ZEEKEE EMAIL MODULE 6.5.3';
 
     private $vars = array();
     /**
@@ -123,7 +126,15 @@ class Email
      * @access private
      * @var string
      */
+    public $_mailer = 'internal';
+
+    /**
+     * @access private
+     * @var string
+     */
     public $error;
+
+
 
     /**
      * class constructor
@@ -428,6 +439,316 @@ class Email
         !empty( $cName ) ? $this->_fromname = $cName : false;
         return $this;
     }
+
+    /**
+     * 
+     * 
+     * 
+     * 
+     */
+    private function mta_phpmailer()
+    {
+        $mail = new \PHPMailer(); // defaults to using php "mail()"
+        $mail->IsHTML(true);
+        $mail->SetFrom($this->_from);    
+        $mail->AddAddress($this->_to);        
+        $mail->Subject = $this->_subject;
+        $mail->AltBody = $this->_text_msg;  
+        $mail->MsgHTML($this->_html_msg);
+
+        //"Mailer Error: " . $mail->ErrorInfo; 
+        if(!$mail->Send()) {
+            return false;
+        } else { 
+            return true;
+        }                        
+    }
+    /**
+     * 
+     * 
+     * 
+     * 
+     */
+    private function mta_internal()
+    {
+        $eol;
+
+        // set end of line marker
+
+        if ( strtoupper( substr( PHP_OS , 0 , 3 ) == 'WIN' ) ) {
+            $eol = "\r\n";
+        } elseif ( strtoupper( substr( PHP_OS , 0 , 3 ) == 'MAC' ) ) {
+            $eol = "\r";
+        } else {
+            $eol = "\n";
+        }
+
+        $headers = 'X-Priority: ' . $this->_priority . $eol;
+        $headers .= 'X-Mailer: ' . $this->_mailer . $eol;
+
+        if (empty($this->_fromname)) { 
+            $headers .= 'From: ' . $this->_from . $eol;
+            $headers .= 'Reply-To: ' . $this->_from . $eol;
+        } else { 
+            $headers .= 'From: ' . $this->_fromname . ' <' . $this->_from . '>' . $eol;
+            $headers .= 'Reply-To: ' . $this->_fromname . ' <' . $this->_from . '>' . $eol;
+        }
+
+        if (is_array($this->_cc)) { 
+            if (sizeof($this->_cc) > 0) {
+                $headers .= 'Cc: '. implode( ' ,' , $this->_cc ) . $eol;            
+            }
+        } else { 
+            if (strlen($this->_cc) > 0) { 
+                $headers .= 'Cc: '. $this->_cc . $eol;            
+            }
+        }
+
+        if (is_array($this->_bcc)) { 
+            if (sizeof($this->_bcc) > 0) {
+                $headers .= 'Bcc: '. implode( ' ,' , $this->_bcc ) . $eol;            
+            }
+        } else { 
+            if (strlen($this->_bcc) > 0) { 
+                $headers .= 'Bcc: '. $this->_bcc . $eol;            
+            }
+        }
+        
+        $headers .= 'Return-Path: ' . $this->_from . $eol;
+        !empty( $this->_sender ) ? $headers .= 'Sender: ' . $this->_sender . $eol : $headers .= 'Sender: ' . $this->_from . $eol;
+        !empty( $this->_sender ) ? $headers .= 'X-Sender: ' . $this->_sender . $eol : $headers .= 'X-Sender: ' . $this->_from . $eol;
+        $headers .= 'X-Originating-Email: ' . $this->_from . $eol;
+
+        if (is_array( $this->_headers)) {
+            foreach ($this->_headers AS $c => $v) {
+                if (!empty($v)) {
+                $headers .= $c . ': ' . $v . $eol;
+                }
+            }
+        }
+
+        $headers .= 'MIME-Version: 1.0' . $eol; // here is the line in question
+        $msg = '';
+
+        $cSemiRand = strtoupper( substr( md5( rand( 0 , 500 ) . 'x' . rand( 100 , 200 ) ) , 0 , 15 ) );
+
+        $cMiMeBoundry = "==Multipart_Boundary_x{$cSemiRand}x";
+
+        if ( sizeof ( $this->_attachments ) > 0 ) {
+
+            $headers .= "Content-type: multipart/mixed; boundary=\"$cMiMeBoundry\"" . $eol;
+            $msg .= "--$cMiMeBoundry" . $eol;
+            $msg .= "Content-type: multipart/alternative; boundary=\"alt--$cMiMeBoundry\"" . $eol . $eol;
+
+            # -=-=-=- TEXT EMAIL PART
+
+            if ( !empty( $this->_text_msg ) ) {
+
+                $msg .= "--alt--$cMiMeBoundry" . $eol;
+                $msg .= 'Content-Type: text/plain; charset=' . $this->_text_charset . $eol;
+                $msg .= 'Content-Transfer-Encoding: ' . $this->_text_content_transfer_encoding . $eol;
+                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
+
+                if ( strtolower( $this->_text_content_transfer_encoding ) == 'base64' ) {
+
+                    $msg .= chunk_split( base64_encode( $this->_text_msg ) ) . $eol;
+
+                } else {
+
+                    $msg .= $this->_text_msg . $eol;
+
+                }
+
+                $msg .= $eol .$eol;
+
+            }
+
+            # -=-=-=- HTML EMAIL PART
+
+            if ( !empty( $this->_html_msg ) ) {
+
+                $msg .= "--alt--$cMiMeBoundry" . $eol;
+                $msg .= 'Content-Type: text/html; charset=' . $this->_html_charset . $eol;
+                $msg .= 'Content-Transfer-Encoding: ' . $this->_html_content_transfer_encoding . $eol;
+                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
+
+                if ( strtolower( $this->_html_content_transfer_encoding ) == 'base64' ) {
+
+                    $msg .= chunk_split( base64_encode( $this->_html_msg ) ) . $eol;
+
+                } else {
+
+                    $msg .= $this->_html_msg . $eol;
+
+                }
+
+                $msg .= "--alt--$cMiMeBoundry--" . $eol;
+
+            }
+
+            foreach ($this->_attachments AS $nKey => $aValue) {
+
+                if ( is_uploaded_file( $aValue['tmp_name'] ) ) {
+
+                    $bin = @ fopen( $aValue['tmp_name'] , 'rb' );
+                    $data = @ fread( $bin , $aValue['size'] );
+                    @ fclose( $bin );
+
+                    $msg .= "--$cMiMeBoundry" . $eol;
+                    $msg .= 'Content-Type: ' . $aValue['type'] . ';';
+                    $msg .= " name=\"$aValue[name]\"" . $eol;
+                    $msg .= 'Content-Transfer-Encoding: base64' . $eol;
+                    $msg .= 'Content-Disposition: attachment;' . $eol . $eol;
+                    $msg .= chunk_split( base64_encode( $data ) ) . $eol . $eol;
+
+                } else {
+
+                    if (is_array($aValue)) { 
+
+                        if ( file_exists( $aValue['path'] ) ) {
+                            $bin = @ fopen( $aValue['path'] , 'rb' );
+                            $data = @ fread( $bin , filesize( $aValue['path'] ) );
+                            @ fclose( $bin );
+                            $msg .= "--$cMiMeBoundry" . $eol;
+                            $msg .= 'Content-Type: application/octet-stream;';
+                            !empty( $aValue['name'] ) ? $msg .= ' name="' . $aValue['name'] . '"' . $eol : $msg .= ' name="' . basename( $aValue['path'] ) . '"' . $eol;
+                            $msg .= 'Content-Transfer-Encoding: base64' . $eol;
+                            $msg .= 'Content-Disposition: attachment;' . $eol . $eol;
+                            $msg .= chunk_split( base64_encode( $data ) ) . $eol . $eol;
+                        }
+
+                    } else { 
+                        if ( file_exists( $aValue) ) {
+                            $bin = @ fopen( $aValue , 'rb' );
+                            $data = @ fread( $bin , filesize( $aValue ) );
+                            @ fclose( $bin );
+                            $msg .= "--$cMiMeBoundry" . $eol;
+                            $msg .= 'Content-Type: application/octet-stream;';
+                            $msg .= ' name="' . basename( $aValue ) . '"' . $eol;
+                            $msg .= 'Content-Transfer-Encoding: base64' . $eol;
+                            $msg .= 'Content-Disposition: attachment;' . $eol . $eol;
+                            $msg .= chunk_split( base64_encode( $data ) ) . $eol . $eol;
+                        }
+                    }
+
+                }
+
+            }
+
+            $msg .= $eol . "--$cMiMeBoundry--" . $eol . $eol;
+
+        } else {
+
+            if ( !empty( $this->_html_msg ) && !empty( $this->_text_msg ) ) {
+
+                # -=-=-=- MAIL HEADERS
+
+                $headers .= "Content-Type: multipart/alternative; boundary=\"$cMiMeBoundry\"" . $eol;
+
+                # -=-=-=- TEXT EMAIL PART
+
+                $msg .= "--$cMiMeBoundry" . $eol;
+                $msg .= 'Content-Type: text/plain; charset=' . $this->_text_charset . $eol;
+                $msg .= 'Content-Transfer-Encoding: ' . $this->_text_content_transfer_encoding . $eol;
+                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
+
+                if ( strtolower( $this->_text_content_transfer_encoding ) == 'base64' ) {
+
+                    $msg .= chunk_split( base64_encode( $this->_text_msg ) ) . $eol;
+
+                } else {
+
+                    $msg .= $this->_text_msg . $eol;
+
+                }
+
+                $msg .= $eol .$eol;
+
+                # -=-=-=- HTML EMAIL PART
+
+                $msg .= "--$cMiMeBoundry" . $eol;
+                $msg .= 'Content-Type: text/html; charset=' . $this->_html_charset . $eol;
+                $msg .= 'Content-Transfer-Encoding: ' . $this->_html_content_transfer_encoding . $eol;
+                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
+
+                if ( strtolower( $this->_html_content_transfer_encoding ) == 'base64' ) {
+
+                    $msg .= chunk_split( base64_encode( $this->_html_msg ) ) . $eol;
+
+                } else {
+
+                    $msg .= $this->_html_msg . $eol;
+
+                }
+
+                $msg .= $eol .$eol;
+
+                # -=-=-=- FINAL BOUNDARY
+
+                $msg .= $eol . "--$cMiMeBoundry--" . $eol . $eol;
+
+            } elseif ( !empty( $this->_html_msg ) ) {
+
+                $headers .= 'Content-Type: text/html; charset=' . $this->_html_charset . $eol;
+                $msg .= 'Content-Transfer-Encoding: ' . $this->_html_content_transfer_encoding . $eol;
+                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
+
+                if ( strtolower( $this->_html_content_transfer_encoding ) == 'base64' ) {
+
+                    $msg .= chunk_split( base64_encode( $this->_html_msg ) ) . $eol;
+
+                } else {
+
+                    $msg .= $this->_html_msg . $eol;
+
+                }
+
+                $msg .= $eol .$eol;
+
+            } else {
+
+                $headers .= 'Content-Type: text/plain; charset=' . $this->_text_charset . $eol;
+                $msg .= 'Content-Transfer-Encoding: ' . $this->_text_content_transfer_encoding . $eol;
+                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
+
+                if ( strtolower( $this->_text_content_transfer_encoding ) == 'base64' ) {
+
+                    $msg .= chunk_split( base64_encode( $this->_text_msg ) ) . $eol;
+
+                } else {
+
+                    $msg .= $this->_text_msg . $eol;
+
+                }
+
+                $msg .= $eol .$eol;
+
+            }
+
+        }
+
+        ini_set(sendmail_from , $this->_from);
+
+        if ( strtoupper( substr( PHP_OS , 0 , 3 ) != 'WIN' ) ) {
+            $headers .= $msg;
+            $msg = '';
+        }
+
+        // need to add imap mail function
+        
+        if (mail($this->_to, $this->_subject, $msg, $headers, "-f " . $this->_from)) {
+            return true;
+        } else {
+            if ( !$this->isAddressValid( $this->_to ) ) {
+                $this->error = 'Invalid TO address : ' . $this->_to;
+            } elseif ( !$this->isAddressValid( $this->_from ) ) {
+                $this->error = 'Invalid FROM address : ' . $this->_from;
+            } else {
+                $this->error = 'Unable to send email message';
+            }
+            return false;
+        }
+    } 
 
     /**
      * test if email address follows valid form
@@ -819,284 +1140,12 @@ class Email
     public function send()
     {
 
-        $eol;
-
-        // set end of line marker
-
-        if ( strtoupper( substr( PHP_OS , 0 , 3 ) == 'WIN' ) ) {
-            $eol = "\r\n";
-        } elseif ( strtoupper( substr( PHP_OS , 0 , 3 ) == 'MAC' ) ) {
-            $eol = "\r";
-        } else {
-            $eol = "\n";
-        }
-
-        $headers = 'X-Priority: ' . $this->_priority . $eol;
-        $headers .= 'X-Mailer: ' . $this->_mailer . $eol;
-
-        if (empty($this->_fromname)) { 
-            $headers .= 'From: ' . $this->_from . $eol;
-            $headers .= 'Reply-To: ' . $this->_from . $eol;
+        if ($this->_mailer == 'PHPMAILER') { 
+            return $this->mta_phpmailer();
         } else { 
-            $headers .= 'From: ' . $this->_fromname . ' <' . $this->_from . '>' . $eol;
-            $headers .= 'Reply-To: ' . $this->_fromname . ' <' . $this->_from . '>' . $eol;
-        }
-
-        if (is_array($this->_cc)) { 
-            if (sizeof($this->_cc) > 0) {
-                $headers .= 'Cc: '. implode( ' ,' , $this->_cc ) . $eol;            
-            }
-        } else { 
-            if (strlen($this->_cc) > 0) { 
-                $headers .= 'Cc: '. $this->_cc . $eol;            
-            }
-        }
-
-        if (is_array($this->_bcc)) { 
-            if (sizeof($this->_bcc) > 0) {
-                $headers .= 'Bcc: '. implode( ' ,' , $this->_bcc ) . $eol;            
-            }
-        } else { 
-            if (strlen($this->_bcc) > 0) { 
-                $headers .= 'Bcc: '. $this->_bcc . $eol;            
-            }
+            return $this->mta_internal();
         }
         
-        $headers .= 'Return-Path: ' . $this->_from . $eol;
-        !empty( $this->_sender ) ? $headers .= 'Sender: ' . $this->_sender . $eol : $headers .= 'Sender: ' . $this->_from . $eol;
-        !empty( $this->_sender ) ? $headers .= 'X-Sender: ' . $this->_sender . $eol : $headers .= 'X-Sender: ' . $this->_from . $eol;
-        $headers .= 'X-Originating-Email: ' . $this->_from . $eol;
-
-        if (is_array( $this->_headers)) {
-            foreach ($this->_headers AS $c => $v) {
-                if (!empty($v)) {
-                $headers .= $c . ': ' . $v . $eol;
-                }
-            }
-        }
-
-        $headers .= 'MIME-Version: 1.0' . $eol; // here is the line in question
-        $msg = '';
-
-        $cSemiRand = strtoupper( substr( md5( rand( 0 , 500 ) . 'x' . rand( 100 , 200 ) ) , 0 , 15 ) );
-
-        $cMiMeBoundry = "==Multipart_Boundary_x{$cSemiRand}x";
-
-        if ( sizeof ( $this->_attachments ) > 0 ) {
-
-            $headers .= "Content-type: multipart/mixed; boundary=\"$cMiMeBoundry\"" . $eol;
-            $msg .= "--$cMiMeBoundry" . $eol;
-            $msg .= "Content-type: multipart/alternative; boundary=\"alt--$cMiMeBoundry\"" . $eol . $eol;
-
-            # -=-=-=- TEXT EMAIL PART
-
-            if ( !empty( $this->_text_msg ) ) {
-
-                $msg .= "--alt--$cMiMeBoundry" . $eol;
-                $msg .= 'Content-Type: text/plain; charset=' . $this->_text_charset . $eol;
-                $msg .= 'Content-Transfer-Encoding: ' . $this->_text_content_transfer_encoding . $eol;
-                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
-
-                if ( strtolower( $this->_text_content_transfer_encoding ) == 'base64' ) {
-
-                    $msg .= chunk_split( base64_encode( $this->_text_msg ) ) . $eol;
-
-                } else {
-
-                    $msg .= $this->_text_msg . $eol;
-
-                }
-
-                $msg .= $eol .$eol;
-
-            }
-
-            # -=-=-=- HTML EMAIL PART
-
-            if ( !empty( $this->_html_msg ) ) {
-
-                $msg .= "--alt--$cMiMeBoundry" . $eol;
-                $msg .= 'Content-Type: text/html; charset=' . $this->_html_charset . $eol;
-                $msg .= 'Content-Transfer-Encoding: ' . $this->_html_content_transfer_encoding . $eol;
-                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
-
-                if ( strtolower( $this->_html_content_transfer_encoding ) == 'base64' ) {
-
-                    $msg .= chunk_split( base64_encode( $this->_html_msg ) ) . $eol;
-
-                } else {
-
-                    $msg .= $this->_html_msg . $eol;
-
-                }
-
-                $msg .= "--alt--$cMiMeBoundry--" . $eol;
-
-            }
-
-            foreach ($this->_attachments AS $nKey => $aValue) {
-
-                if ( is_uploaded_file( $aValue['tmp_name'] ) ) {
-
-                    $bin = @ fopen( $aValue['tmp_name'] , 'rb' );
-                    $data = @ fread( $bin , $aValue['size'] );
-                    @ fclose( $bin );
-
-                    $msg .= "--$cMiMeBoundry" . $eol;
-                    $msg .= 'Content-Type: ' . $aValue['type'] . ';';
-                    $msg .= " name=\"$aValue[name]\"" . $eol;
-                    $msg .= 'Content-Transfer-Encoding: base64' . $eol;
-                    $msg .= 'Content-Disposition: attachment;' . $eol . $eol;
-                    $msg .= chunk_split( base64_encode( $data ) ) . $eol . $eol;
-
-                } else {
-
-                    if (is_array($aValue)) { 
-
-                        if ( file_exists( $aValue['path'] ) ) {
-                            $bin = @ fopen( $aValue['path'] , 'rb' );
-                            $data = @ fread( $bin , filesize( $aValue['path'] ) );
-                            @ fclose( $bin );
-                            $msg .= "--$cMiMeBoundry" . $eol;
-                            $msg .= 'Content-Type: application/octet-stream;';
-                            !empty( $aValue['name'] ) ? $msg .= ' name="' . $aValue['name'] . '"' . $eol : $msg .= ' name="' . basename( $aValue['path'] ) . '"' . $eol;
-                            $msg .= 'Content-Transfer-Encoding: base64' . $eol;
-                            $msg .= 'Content-Disposition: attachment;' . $eol . $eol;
-                            $msg .= chunk_split( base64_encode( $data ) ) . $eol . $eol;
-                        }
-
-                    } else { 
-                        if ( file_exists( $aValue) ) {
-                            $bin = @ fopen( $aValue , 'rb' );
-                            $data = @ fread( $bin , filesize( $aValue ) );
-                            @ fclose( $bin );
-                            $msg .= "--$cMiMeBoundry" . $eol;
-                            $msg .= 'Content-Type: application/octet-stream;';
-                            $msg .= ' name="' . basename( $aValue ) . '"' . $eol;
-                            $msg .= 'Content-Transfer-Encoding: base64' . $eol;
-                            $msg .= 'Content-Disposition: attachment;' . $eol . $eol;
-                            $msg .= chunk_split( base64_encode( $data ) ) . $eol . $eol;
-                        }
-                    }
-
-                }
-
-            }
-
-            $msg .= $eol . "--$cMiMeBoundry--" . $eol . $eol;
-
-        } else {
-
-            if ( !empty( $this->_html_msg ) && !empty( $this->_text_msg ) ) {
-
-                # -=-=-=- MAIL HEADERS
-
-                $headers .= "Content-Type: multipart/alternative; boundary=\"$cMiMeBoundry\"" . $eol;
-
-                # -=-=-=- TEXT EMAIL PART
-
-                $msg .= "--$cMiMeBoundry" . $eol;
-                $msg .= 'Content-Type: text/plain; charset=' . $this->_text_charset . $eol;
-                $msg .= 'Content-Transfer-Encoding: ' . $this->_text_content_transfer_encoding . $eol;
-                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
-
-                if ( strtolower( $this->_text_content_transfer_encoding ) == 'base64' ) {
-
-                    $msg .= chunk_split( base64_encode( $this->_text_msg ) ) . $eol;
-
-                } else {
-
-                    $msg .= $this->_text_msg . $eol;
-
-                }
-
-                $msg .= $eol .$eol;
-
-                # -=-=-=- HTML EMAIL PART
-
-                $msg .= "--$cMiMeBoundry" . $eol;
-                $msg .= 'Content-Type: text/html; charset=' . $this->_html_charset . $eol;
-                $msg .= 'Content-Transfer-Encoding: ' . $this->_html_content_transfer_encoding . $eol;
-                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
-
-                if ( strtolower( $this->_html_content_transfer_encoding ) == 'base64' ) {
-
-                    $msg .= chunk_split( base64_encode( $this->_html_msg ) ) . $eol;
-
-                } else {
-
-                    $msg .= $this->_html_msg . $eol;
-
-                }
-
-                $msg .= $eol .$eol;
-
-                # -=-=-=- FINAL BOUNDARY
-
-                $msg .= $eol . "--$cMiMeBoundry--" . $eol . $eol;
-
-            } elseif ( !empty( $this->_html_msg ) ) {
-
-                $headers .= 'Content-Type: text/html; charset=' . $this->_html_charset . $eol;
-                $msg .= 'Content-Transfer-Encoding: ' . $this->_html_content_transfer_encoding . $eol;
-                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
-
-                if ( strtolower( $this->_html_content_transfer_encoding ) == 'base64' ) {
-
-                    $msg .= chunk_split( base64_encode( $this->_html_msg ) ) . $eol;
-
-                } else {
-
-                    $msg .= $this->_html_msg . $eol;
-
-                }
-
-                $msg .= $eol .$eol;
-
-            } else {
-
-                $headers .= 'Content-Type: text/plain; charset=' . $this->_text_charset . $eol;
-                $msg .= 'Content-Transfer-Encoding: ' . $this->_text_content_transfer_encoding . $eol;
-                $msg .= 'Content-Disposition: inline;' . $eol . $eol;
-
-                if ( strtolower( $this->_text_content_transfer_encoding ) == 'base64' ) {
-
-                    $msg .= chunk_split( base64_encode( $this->_text_msg ) ) . $eol;
-
-                } else {
-
-                    $msg .= $this->_text_msg . $eol;
-
-                }
-
-                $msg .= $eol .$eol;
-
-            }
-
-        }
-
-        ini_set(sendmail_from , $this->_from);
-
-        if ( strtoupper( substr( PHP_OS , 0 , 3 ) != 'WIN' ) ) {
-            $headers .= $msg;
-            $msg = '';
-        }
-
-        // need to add imap mail function
-        
-        if (mail($this->_to, $this->_subject, $msg, $headers, "-f " . $this->_from)) {
-            return true;
-        } else {
-            if ( !$this->isAddressValid( $this->_to ) ) {
-                $this->error = 'Invalid TO address : ' . $this->_to;
-            } elseif ( !$this->isAddressValid( $this->_from ) ) {
-                $this->error = 'Invalid FROM address : ' . $this->_from;
-            } else {
-                $this->error = 'Unable to send email message';
-            }
-            return false;
-        }
-
     }
 
 
@@ -1119,6 +1168,26 @@ class Email
     {    
         $this->isAddressValid ( $cEmail ) ? $this->_sender = $cEmail : $this->_sender = '';
         return $this;
+    }
+
+
+    /**
+     * 
+     * 
+     * 
+     * 
+     */ 
+    public function setMTA($mailer = 'INTERNAL')
+    {
+        $mtas = array('PHPMAILER');
+
+        $mailer = strtoupper(trim($mailer));
+        
+        if (in_array($mailer, $mtas)) { 
+            $this->_mailer = $mailer;
+        } else { 
+            $this->_mailer = 'INTERNAL';
+        }
     }
 
     /**

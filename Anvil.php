@@ -290,6 +290,21 @@ class Anvil
         return array_reverse( $aReturn );
     }
 
+    public function cleanArray($array, $restrict = '') 
+    { 
+        $return = array();
+        $restricted = preg_split("/,/", strtolower($restrict));
+        foreach ($restricted as $n => $v) { 
+            $restricted[$n] = trim($v);
+        }
+        foreach ($array as $key => $value) {
+            if (!in_array($key, $restricted)) { 
+                $return[$key] = $value;
+            }
+        }
+        return $return;
+    }
+
     /**
      * convert lbs to kilograms]
      * 
@@ -345,40 +360,64 @@ class Anvil
      * @return boolean 
      */
     public static function curl($url, $data, $headers = array(), $method = 'GET', $debug = 0)
-    {
-
+    {        
         $output = array();
+
+        $httpAuth = false;
+
+        $httpAuthValue = false;
 
         $curlHeaders = array();
 
         if (sizeof($headers) > 0) {
             foreach($headers as $key => $value) { 
-                $curlHeaders[] = "$key: $value";
+                if (array_key_exists('HTTPAUTH', $headers)) {
+                    $httpAuth = true;
+                    $httpAuthValue = $headers['HTTPAUTH'];
+                } else { 
+                    $curlHeaders[] = "$key: $value";
+                }
             }                    
         }
 
         if (is_array($headers)) { 
-            if (strpos($headers['Content-Type'], 'xml') > 0 ) {
+            if (array_key_exists('Content-Type', $headers) && strpos($headers['Content-Type'], 'xml') > 0 ) {
                 $query = $data;
-            } else { 
-                $query = http_build_query($data, '', '&');    
+            } else {     
+                if (is_object($data) || is_array($data)) {            
+                    $query = trim(http_build_query($data, '', '&'));    
+                } else { 
+                    $query = $data;
+                }
             }
         } else { 
-            $query = http_build_query($data, '', '&');
+            if (is_object($data) || is_array($data)) {            
+                $query = trim(http_build_query($data, '', '&'));    
+            } else { 
+                $query = $data;
+            }
         }
-
         
         $ch = curl_init();                  // URL of gateway for cURL to post to
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-        (strtoupper(substr(PHP_OS, 0, 3) == 'WIN')) ? curl_setopt($ch, CURLOPT_CAINFO, 'C:\WINNT\curl-ca-bundle.crt') : false;        
+        curl_setopt($ch, CURLOPT_REFERER, 'http://www.example.com/'); // to prevent error code 500
+        curl_setopt($ch, CURLOPT_FORBID_REUSE, 1);
+        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+        (strtoupper(substr(PHP_OS, 0, 3) == 'WIN')) ? curl_setopt($ch, CURLOPT_CAINFO, 'C:\WINNT\curl-ca-bundle.crt') : false;
+
+        if ($httpAuth) { 
+            curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+            curl_setopt($ch, CURLOPT_USERPWD, $httpAuthValue);
+        }
+
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);        
         curl_setopt($ch, CURLOPT_HTTPHEADER, $curlHeaders); 
     
         if ($method == 'POST') {
             curl_setopt($ch, CURLOPT_POST, 1);                
-            curl_setopt($ch, CURLOPT_POSTFIELDS, trim($query));            
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $query);            
         }
 
         if ($debug) { 
@@ -394,6 +433,7 @@ class Anvil
         
         if ($debug) { 
             $output = (object) curl_getinfo($ch);
+            $output->query = trim($query);
             $output->headerSent = curl_getinfo($ch, CURLINFO_HEADER_OUT);
         }
                 
@@ -571,6 +611,16 @@ class Anvil
         } else {
             return 0;
         }
+    }
+
+    /**
+     * dump variable to HTML
+     * @param  [various] $var [the variable to be dumped to the screen in HTML]
+     * @return string
+     */
+    public static function dumpVar($var)
+    {
+        return self::dumpVariable($var);
     }
 
     /**
@@ -757,7 +807,43 @@ class Anvil
             $classname = $matches[1];
         }
         return $classname;
-    }    
+    }  
+
+
+    /**
+     * 
+     * 
+     * @return array
+     */ 
+    public function getDirectoryContents($directory, $recursive = false) 
+    { 
+
+        $return = array();
+
+        if (!is_dir($directory)) {
+            return false;
+        } elseif (is_readable($directory)) {
+            $handle = opendir($directory);
+            while (false !== ($item = readdir($handle))) {
+                if ($item != '.' && $item != '..') {
+                    if (is_dir($directory)) {
+                        if ($recursive) { 
+                            $return[] = self::getDirectoryContents($directory . '/'. $item , $recursive);
+                        } else { 
+                            $return[] = $item;
+                        }                        
+                    } else {
+                        $return[] = $item;
+                    }
+                }
+            }
+            closedir($handle);
+        }
+
+        return $return;
+    }
+
+
 
     /**
      * extract the file extension from a path name.
@@ -1993,6 +2079,10 @@ class Anvil
             $value = preg_replace("/\s([a-zA-Z]+:\/\/[a-z][a-z0-9\_\.\-]*[a-z]{2,6}[a-zA-Z0-9\/\*\-\?\&\%]*)([\s|\.|\,])/i", '', $value);
             // match www.something.domain/path/file.extension?some=variable&another=asf%
             return preg_replace("/\s(www\.[a-z][a-z0-9\_\.\-]*[a-z]{2,6}[a-zA-Z0-9\/\*\-\?\&\%]*)([\s|\.|\,])/i", '', $value);
+        } elseif ($cType == 'MONEY') {
+            return preg_replace('/[^0-9\.]/', '', $value);
+        } elseif ($cType == 'MONEY_EXTENDED') {
+            return preg_replace('/[^0-9\.\,]/', '', $value);
         } elseif ($cType == 'WHOLE_NUM') {
             return preg_replace('/[^0-9]/', '', $value);
         } elseif ($cType == 'FLOAT') {
@@ -2064,7 +2154,6 @@ class Anvil
      */
     public function slurp($f, $output = array(), $lDynamic = 1)
     {
-
         $output = (object) $output;
         $cReturn = '';
         if (file_exists($f)) {
@@ -2081,13 +2170,10 @@ class Anvil
             ob_end_clean();
         } else {
             if (substr(trim(strtolower($f)), 0, 4) == 'http' 
-                || substr(trim(strtolower($f)), 0, 5) == 'https') {
-                
-                $cReturn = file_get_contents($f);
-            
+                || substr(trim(strtolower($f)), 0, 5) == 'https') {                
+                $cReturn = file_get_contents($f);            
             }
         }
-
         return $cReturn;
     }
 

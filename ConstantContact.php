@@ -31,7 +31,7 @@ class ConstantContact
     * @param $cc object An instance of CtCt\ConstantContact
     * @return void
     */
-    function __construct($apikey = '', $token = '')
+    function __construct($token = '', $apikey = 'qayryzexuhgb8xwvzqjzcx56')
     {
         $this->apiKey = $apikey;
         $this->accessToken = $token;
@@ -122,9 +122,15 @@ class ConstantContact
 
     }
 
-    public function getContactByEmail()
+    public function getContactByEmail($email = '')
     {
-        $response = $cc->getContactByEmail($this->accessToken, $_POST['email']);
+        $result = $this->cc->getContactByEmail($this->accessToken, $email)->results;
+
+        if (sizeof($result) == 1) { 
+            return $result[0];
+        } else { 
+            return (object) array('id' => 0);
+        }
     }
 
     /**

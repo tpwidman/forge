@@ -8,19 +8,28 @@
  * that you are responsible for any charges incurred by using the Google API.  We always ensure
  * our clients have proper licensing
  */  
-class Authorizenet
+class Authorizenet extends Anvil
 {
 
-    // private $server = 'https://secure2.authorize.net/gateway/transact.dll';
+    private $server = 'https://secure.authorize.net/gateway/transact.dll';
 
-    private $server = 'https://api.authorize.net/xml/v1/request.api';
-
-    private $debug = 1;
-
-    // $cLogin = '4uN77tP7'; // foonster credentials
-    // $cPassword ='7p2748HH3Ad79SjB'; // foonster credentials
+    private $debug = 0;
 
     public $_response = array(); 
+
+    private $login = '95LgR9sV';
+
+    private $password = '69E7C2kh9LcycB4R';
+
+    private $mode;
+
+    private $cart;
+
+    private $trans_code;
+
+    private $auth_code; 
+
+    private $response;
 
     private $xmlHeaders = array(
             'Content-Type' => 'application/xml; utf-8', 
@@ -94,16 +103,25 @@ class Authorizenet
             )
         );
 
-
     /**
      * @ignore
      */
     public function __construct($id = null, $key = null)
     {
 
-        $this->subscriptionXml['merchantAuthentication']['name'] = trim($id);
-        $this->subscriptionXml['merchantAuthentication']['transactionKey'] = trim($key);
+        if (!empty($id)) { 
+            //$this->subscriptionXml['merchantAuthentication']['name'] = trim($id);
+            $this->login = trim($id);
+        } else { 
+            $this->subscriptionXml['merchantAuthentication']['name'] = $this->id;
+        }
 
+        if (!empty($key)) { 
+            //$this->subscriptionXml['merchantAuthentication']['transactionKey'] = trim($key);
+            $this->password = trim($key);
+        } else { 
+            $this->subscriptionXml['merchantAuthentication']['transactionKey'] = $this->password;
+        }
     }
 
     /**
@@ -391,9 +409,170 @@ class Authorizenet
      * 
      * 
      */
-    public function authorizeCapture()
+    public function authorizeCapture($transaction)
     {
+        
+        $return = array(
+            'authorized' => 0,
+            'authorization_code' => '',
+            'transaction_id' => '',
+            'message' => ''
+            );
 
+        $products = array();        
+        $id = $this->login;    
+        $pw = $this->password;        
+        !is_object($transaction) ? $transaction = (object) $transaction : false;
+        !empty($transaction->transaction_mode) ? $this->setServer($transaction->transaction_mode) : false;
+        !empty($transaction->transaction_id) ? $id = $transaction->transaction_id : false;
+        !empty($transaction->transaction_pw) ? $pw = $transaction->transaction_pw : false;
+
+        $this->payment->cc_number = $this->scrubVar($this->payment->cc_number);
+
+        if($transacton['exception']) { 
+            
+            $aEntry = array(
+                'id' => $transaction->item_id,
+                'name' => $transaction->item_name,
+                'desc' => $transaction->item_desc,
+                'qty' => $transaction->item_qty,
+                'price' => $transaction->amount,
+                'taxable' => $transaction->item_taxable
+                );                
+            $products[] = "x_line_item=".urlencode( implode( '<|>', $aEntry)) . '&'; 
+
+            $this->cart->total = $transaction->amount;
+
+        } else {
+
+            if (is_array($this->cart->items)) {
+                $amount = 0;
+                $nLoop = 0;
+                foreach ($this->cart->items AS $cKey => $aItem ) {       
+                    $aItem = (array) $aItem;                 
+                    $itemPrice = ($aItem['price'] + $aItem['setupfee'] + $aItem['handle_charge'] + $aItem['gift_charge']);
+                    if ( $nLoop < 30 ) {        
+                        $nLoop++;
+                        $aEntry = array(
+                            'id' => 'item'.$nLoop,
+                            'name' => substr(trim($aItem['sku']), 0, 28 ),
+                            'desc' => substr( $aItem['title'].' '.strip_tags( $aItem['attribute_text'] ), 0, 254 ),
+                            'qty' => $aItem['qty'],
+                            'price' => $itemPrice,
+                            'taxable' => $aItem['taxable']
+                        );                
+                        $products[] = "x_line_item=".urlencode( implode( '<|>', $aEntry)) . '&';      
+
+                    }
+                    $amount += ($aItem['qty'] * $itemPrice);            
+                }  
+
+                $this->cart->amount = $amount;
+
+                if ($this->cart->promotional_discount > 0) {
+                    $products = array();
+                
+                    $aEntry = array(
+                        'id' => 'item1',
+                        'name' => 'DISCOUNT',
+                        'desc' => 'Complex/Discounted transaction - ' . number_format($this->cart->promotional_discount,2),
+                        'qty' => 1,
+                        'price' => $this->cart->amount,
+                        'taxable' => 1
+                        );                
+                    $products[] = "x_line_item=".urlencode( implode( '<|>', $aEntry)) . '&'; 
+                    
+                }            
+
+                $this->cart->total = (
+                ($this->cart->amount + $this->cart->taxes + $this->cart->handle_charge + $this->cart->ship_charge + $this->cart->gift_charge) - 
+                $this->cart->promotional_discount);
+
+            } else { 
+            
+                $aEntry = array(
+                    'id' => 'item1',
+                    'name' => 'SIMPLE',
+                    'desc' => 'NO ITEM INFORMATION PASSED',
+                    'qty' => 1,
+                    'price' => $this->cart->amount,
+                    'taxable' => 1
+                    );                
+                $products[] = "x_line_item=".urlencode( implode( '<|>', $aEntry)) . '&'; 
+
+                $this->cart->total = (
+                    ($this->cart->amount + $this->cart->taxes + $this->cart->handle_charge + $this->cart->ship_charge + $this->cart->gift_charge) - 
+                    $this->cart->promotional_amount);
+            } 
+
+        }    
+        //if ($aVars['amount'] == 0) { $aVars['amount'] = $nTemp; }      
+
+        empty($this->cart->amount) ? $this->cart->amount = '0.00' : $this->cart->amount = $this->scrubVar($this->cart->amount, 'MONEY');
+        empty($this->cart->taxes) ? $this->cart->taxes = '0.00' : $this->cart->taxes = $this->scrubVar($this->cart->taxes, 'MONEY');
+        empty($this->cart->handle_charge) ? $this->cart->handle_charge = '0.00' : $this->cart->handle_charge = $this->scrubVar($this->cart->handle_charge, 'MONEY');
+        empty($this->cart->ship_charge) ? $this->cart->ship_charge = '0.00' : $this->cart->ship_charge = $this->scrubVar($this->cart->ship_charge, 'MONEY');
+        empty($this->cart->gift_charge) ? $this->cart->gift_charge = '0.00' : $this->cart->gift_charge = $this->scrubVar($this->cart->gift_charge, 'MONEY');
+
+        $aAuthorizeNet  = array (
+            "x_login"              => $id,
+            "x_version"            => "3.1",
+            "x_test_request"       => $cType,
+            "x_delim_char"         => "|",
+            "x_delim_data"         => "TRUE",
+            "x_url"                => "FALSE",
+            "x_type"               => "AUTH_CAPTURE",
+            "x_method"             => "CC",
+            "x_tran_key"           => $pw, // 
+            "x_invoice_num"        => $this->cart->session,
+            "x_relay_response"     => "FALSE",
+            "x_card_num"           => $transaction->payment['cc_number'],
+            "x_card_code"          => $transaction->payment['cc_cvv2'],
+            "x_exp_date"           => $transaction->payment['cc_exp_month'] . $transaction->payment['cc_exp_year'],
+            "x_description"        => $transaction->journal,
+            "x_tax"                => "Taxes|" . $this->scrubVar($this->cart->taxes),
+            "x_freight"            => "Freight<|>" . strip_tags( stripslashes($this->cart->ship_carrier) . '/handling' ) . "<|>" . ($this->cart->ship_charge + $this->cart->handle_charge),
+            "x_amount"             => $this->scrubVar($this->cart->total),
+            "x_company"            => $this->cart->bill_company,
+            "x_first_name"         => $this->cart->bill_name_first,
+            "x_last_name"          => $this->cart->bill_name_last,
+            "x_address"            => $this->cart->bill_address_1,
+            "x_city"               => $this->cart->bill_address_city,
+            "x_state"              => $this->cart->bill_address_state, 
+            "x_zip"                => $this->cart->bill_address_postal_code,
+            "x_country"            => $this->cart->bill_country_iso_3166,
+            "x_phone"              => $this->cart->bill_address_phone,
+            "x_fax"                => $this->cart->bill_address_altphone, 
+            "x_email"              => $this->cart->bill_email,
+            "x_ship_to_first_name" => $this->cart->ship_name_first,
+            "x_ship_to_last_name"  => $this->cart->ship_name_last,
+            "x_ship_to_address"    => $this->cart->ship_address_1,
+            "x_ship_to_city"       => $this->cart->ship_address_city,
+            "x_ship_to_state"      => $this->cart->ship_address_state,
+            "x_ship_to_zip"        => $this->cart->ship_address_postal_code,
+            "x_ship_to_country"    => $this->cart->ship_country_iso_3166,
+            "x_customer_ip"        => $_SERVER['REMOTE_ADDR']
+        );    
+
+        $query = http_build_query($aAuthorizeNet, '', '&') . '&' . implode($products);            
+
+        $http = $this->curl($this->server, $query, array(), 'POST');
+
+        empty($http->response) ? $response = array() : $response = explode('|', trim($http->response));
+
+        ($response[0] == 4) ? $response[0] = 1 : false;    
+
+        $return['amount'] = $this->scrubVar($this->cart->total);
+        $return['authorized'] = $response[0];
+        $return['authorization_code'] = $response[4];
+        $return['transaction_type'] = 'AUTH_CAPTURE';
+        $return['transaction_id'] = $response[6];
+        $return['message'] = '[' . $id . ':' . $response[2] . '] [' . substr($transaction->payment['cc_number'], -4) . ']' . $response[3];
+        ($this->debug) ? $return['query'] = $query : false;
+        ($this->debug) ? $return['response'] = json_encode($http->response) : false;
+
+        return (object) $return;
+        
     }
 
     /**
@@ -434,15 +613,29 @@ class Authorizenet
      * 
      * 
      * 
+     */
+    public function cart()
+    {
+
+    }
+
+
+
+    /**
+     * 
+     * 
+     * 
+     * 
      */ 
     public function credit()
     {
 
     }
 
+    /*
     /**
      * 
-     */
+     
     private function curlPOST($server, $data, $headers = array())
     {
 
@@ -492,11 +685,27 @@ class Authorizenet
 
     }
 
+
     private function dumpVar($var) 
     { 
         echo '<pre>';
         print_r($var);
         echo '</pre>';
+    }
+    */
+   
+    /**
+     * 
+     * 
+     * 
+     */ 
+    public function debug($mode)
+    {
+        if (strtolower($mode) == 'on' || strtolower($mode) == 'true' || $mode === true || $mode == 1) { 
+            $this->debug = 1;
+        } else { 
+            $this->debug = 0;
+        }
     }
 
     public function dumpResponse()
@@ -664,8 +873,6 @@ class Authorizenet
      */ 
     public function getTransactionDetailsRequest($id)
     {
-
-
         $array = array(
         'merchantAuthentication' => 
             array(
@@ -678,26 +885,49 @@ class Authorizenet
         return simplexml_load_string($return);
     }
 
-
-
-
-    
     /**
      * 
      * 
+     * 
+     */
+    public function setCart($cart)
+    {
+        $this->cart = clone $cart;
+    } 
+    
+    /**
+     * 
+     *      
+     * private $server = 'https://secure2.authorize.net/gateway/transact.dll
+     * https://test.authorize.net/gateway/transact.dll';
      * 
      * 
      * 
      */ 
     public function setServer($server = 'PRODUCTION')
     {    
-        if ($server == 'TEST') { 
-            $this->server = 'https://test.authorize.net/gateway/transact.dll';
-        } elseif ($server == 'SANDBOX') { 
-            $this->server = 'https://apitest.authorize.net/xml/v1/request.api';
-        } else { 
+        
+        if ($server == 'API') { 
             $this->server = 'https://api2.authorize.net/xml/v1/request.api';
+        } else if ($server == 'SANDBOX') { 
+            $this->server = 'https://apitest.authorize.net/xml/v1/request.api';
+        } else if ($server == 'TEST') { 
+            $this->server = 'https://test.authorize.net/gateway/transact.dll';
+        } else { 
+            $this->server = 'https://secure.authorize.net/gateway/transact.dll';
         }
+
+    }
+
+    /**
+     * 
+     * 
+     * 
+     * 
+     */ 
+    public function ping()
+    {
+        echo date('c');
     }
 
 

@@ -70,7 +70,6 @@ class Database
         $constraints = array(), 
         $limit = '1')
     {
-
         $sql = '';
         $fields = $values = $updates = $columns = array();
         $type = strtoupper(trim($type));
@@ -132,8 +131,12 @@ class Database
                         $values[] = ":$array[Field]";
                     }
                 }
+            }   
+            if (array_key_exists($primary, $variables)) { 
+                $sql = "INSERT INTO $table ( $primary, " . implode(' , ', $fields) . " ) VALUES ( '$variables[$primary]', " . implode(' , ', $values) . " );";
+            } else { 
+                $sql = "INSERT INTO $table ( " . implode(' , ', $fields) . ' ) VALUES ( ' . implode(' , ', $values) . " );";    
             }
-            $sql = "INSERT INTO $table ( " . implode(' , ', $fields) . ' ) VALUES ( ' . implode(' , ', $values) . " );";
         }
         
         return $sql;
@@ -230,14 +233,15 @@ class Database
         $columns = array();
         $columns = $this->describeTable($table);
 
-        foreach ($columns AS $key => $array) {
-            
+        foreach ($columns AS $key => $array) {            
             if (!array_key_exists($key, $variables)) {
+                ($array['Null'] == 'NO' && $variables[$array['Field']]) ? $variables[$key] = $array['Default'] : false;
+                if ($array['Null'] == 'NO' && empty(trim($variables[$array['Field']]))) {                    
 
-                ($array['Null'] == 'NO' && $variables[$array['Field']]) ? $variables[$key] = $array['Default'] : false;                        
-                
-                if ($array['Null'] == 'NO' && empty(trim($variables[$array['Field']]))) {
-                    empty($array['Default']) ? $variables[$key] = '' : $variables[$key] = $array['Default'];
+                    if (!preg_match("/auto_increment/is", $array['Extra'])) { 
+                        empty($array['Default']) ? $variables[$key] = '' : $variables[$key] = $array['Default'];
+                    }
+
                 } else {                     
                     if (empty(trim($variables[$array['Field']]))) { 
                         !empty($array['Default']) ? $variables[$key] = "'" . $array['Default'] . "'" : $array['Default'] = '';
@@ -254,6 +258,52 @@ class Database
                 (empty( $variables[$array['Field']] ) && $array['Null'] == 'NO') ? $variables[$array['Field']] = $array['Default'] : false;
             }
         }        
+    }
+
+    /**
+     * 
+     * 
+     * 
+     * 
+     */
+    public function generateFullTextQuery($searchTxt = '')
+    {
+        /*
+        $text = '';
+    
+
+    $string = addslashes(urldecode(trim($string)));
+
+    $string = str_replace(" ", "[[:space:]]", $string);
+
+    $string = str_replace("(", "[(]", $string);
+
+    $string = str_replace(")", "[)]", $string);
+
+    $string = str_replace("-", "\-", $string);
+
+    return $string;
+
+    $var = mysql_fetch_object( mysql_query( "SHOW VARIABLES LIKE 'ft_min%';" ) );
+    
+    $terms = explode(' ', preg_replace('/\s+/',' ', trim($searchTxt)));
+
+    foreach ($terms AS $cKey => $cValue) {
+        if (strlen($cValue) >= $var->Value) { 
+            $terms[$cKey] = trim($cValue) . '*';
+        } else { 
+            unset($terms[$cKey]);
+        }
+    }
+
+    if (sizeof($terms) > 0) {
+        $terms[0] = '+' . $terms[0];
+        return implode(' ', $terms);
+    } else { 
+        return '';
+    } 
+
+    */
     }
 
     
@@ -316,6 +366,30 @@ class Database
         return (substr($haystack, 0, $length) === $needle);
     }
 
+    public function delete($table, $id = 0) 
+    {
+
+        if ($id > 0) { 
+            
+            $field = $this->getPrimaryKey($table);
+
+            $query = "DELETE FROM $table WHERE $field = :id;";
+            $sth = $this->dbh->prepare($query);
+            $sth->execute(array('id' => $id));
+        
+            if ($sth->rowCount() == 1) {
+                return 1;
+            } else {
+                return 0;
+            }
+
+        }
+
+
+
+
+    }
+
     /**
      * 
      * query the currently selected database for properties DESCRIBE
@@ -360,7 +434,15 @@ class Database
      */
     public function errorMessage()
     {
-        return $this->errorMessage;
+
+        if (is_array($this->errorMessage)) { 
+            return implode("\n", $this->errorMessage);
+        } else { 
+            return $this->errorMessage;
+        }
+
+
+        
     }
 
     public function fetch($type = 'FETCH_OBJ')
@@ -374,6 +456,20 @@ class Database
         $err = $this->dbh->errorInfo();
         return $err[2];
     }
+
+    public function getPrimaryKey($table)
+    {
+        $primaryKeyName = '';
+
+        $table = $this->describeTable($table);
+
+        foreach ($table as $key => $value) { 
+            if (strtoupper($value['Key']) == 'PRI') { 
+                return $value['Field'];
+            }
+        }
+    }
+
 
     /**
      * pre-defined sql insert command
@@ -394,25 +490,10 @@ class Database
         
         $sth = $this->runQuery($sql, $fields->vars);
 
-
-        
-/*
-        echo '<pre>';
-
-        echo $sql . "\n";
-
-        print_r($fields);
-
-        echo '</pre>';
-
-        exit;
-  */      
         $err = $sth->errorInfo();
+
         if ($err[1] > 0) {
-
-            print_r($err);
-
-            $this->error = $err[2];
+            $this->errorMessage = $err[2];
             return 0;
         } else {
             return $this->insertId();
@@ -424,7 +505,7 @@ class Database
      */
     public function isError()
     {
-        return $this->error;
+        return $this->errorMessage;
     }    
 
     /**
@@ -510,10 +591,8 @@ class Database
                 echo "\nPDO::errorInfo():\n";
                 print_r($this->errorInfo());
             }
-            $sth->execute($matches);     
-
-            $err = $sth->errorInfo();
-            
+            $sth->execute($matches);    
+            $this->errorMessage = $sth->errorInfo();            
             return $sth;
         } catch ( \PDOException $e) {
             return $e->getCode() . ':' . $e->getMessage();
@@ -534,9 +613,7 @@ class Database
         try {
             $sth = $this->dbh->prepare($sql);
             if (!$sth) {
-                echo "\nPDO::errorInfo():\n";
-                echo $sql;
-                print_r($this->dbh->errorInfo());
+                $this->errorMessage = "PDO::errorInfo(): " . $sql;
             }
             $sth->execute($params);
 
@@ -725,7 +802,7 @@ class Database
         $err = $sth->errorInfo();
 
         if ($err[1] > 0) {
-            $this->error = $err[2];
+            $this->errorMessage = $err[2];
             return 0;
         } else {
             if ($err[1] == 0) {

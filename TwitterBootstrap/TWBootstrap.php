@@ -42,7 +42,7 @@ class TWBootstrap
             $type = 'success';
         }
         empty($id) ? $id = $type . 'Alert' : false;
-        $string = '<div class="alert alert-' . $type . ' alert-dismissible fade in flash" id="' . $id . '" role="alert">' . $message . '</div>';
+        $string = '<div class="alert alert-' . $type . ' alert-dismissible flash" id="' . $id . '" role="alert">' . $message . '</div>';
         return $string;
     }
 }

@@ -3,7 +3,7 @@
  * @author Nicolas Colbert <ncolbert@zeekee.com>
  * @copyright 2016 Zeekee Interactive
  */
-class Payeezy
+class Payeezy extends Anvil
 {
 
     private $server = 'https://api.payeezy.com/v1/transactions';
@@ -82,6 +82,49 @@ class Payeezy
 
     }
 
+    /*
+     * 
+     * 
+     * 
+     * 
+     */
+    public function authorizeCapture($transaction)
+    {
+        
+        $return = array(
+            'authorized' => 0,
+            'authorization_code' => '',
+            'transaction_id' => '',
+            'message' => '',
+            'amount' => $this->scrubVar($this->amount)
+            );
+
+        $creditCard = array(
+            'card_number' => $transaction['payment']['cc_number'],
+            'card_type' => $transaction['payment']['cc_type'],
+            'card_holder_name' => $transaction['payment']['cc_name_on_card'],
+            'card_cvv' => $transaction['payment']['cc_cvv2'],
+            'card_expiry' => $transaction['payment']['cc_exp_month'] . '/' . $transaction['payment']['cc_exp_year'],
+            );
+
+        !empty($transaction['transaction_mode']) ? $this->setServer($transaction['transaction_mode']) : false;
+        
+        $this->setCreditCardInfo($creditCard);
+
+        $this->amount = preg_replace("/[^0-9]/",'', number_format(preg_replace("/[^0-9\.]/",'', $transaction['payment']['amount'] ), 2 ));
+
+        $results = json_decode($this->purchase(), true);        
+
+        ($results['transaction_status'] == 'approved') ? $return['authorized'] = 1 : false;
+                
+        $return['authorization_code'] = $results['correlation_id'];
+        $return['transaction_type'] = 'AUTH_CAPTURE';
+        $return['transaction_id'] = $results['transaction_id'];
+        $return['message'] = '[' . $id . ':' . $response['gateway_resp_code'] . '] [' . substr($transaction['payment']['cc_number'], -4) . ']' . $results['gateway_message'];
+        
+        return (object) $return;
+
+    }
     /**
      * 
      * 
@@ -300,9 +343,7 @@ class Payeezy
             $this->_response['headers'] = $headerSent;    
             $this->_response['query'] = htmlentities($query) ;                    
         }
-        
         return $response;
-
     }
 
     /**
@@ -391,12 +432,16 @@ class Payeezy
             'cvv' => '',
             'exp_date' => '',
             );
+
+        list($month, $year) = preg_split("/\//", $args['card_expiry']);
+        $month = sprintf( "%02d", $month);
+        $year = substr($year, -2);
         
         $this->credit_card->card_number = strval(trim(preg_replace("/[^0-9]/", '', $args['card_number'])));
         $this->credit_card->type = strtolower(trim($args['card_type']));
         $this->credit_card->cardholder_name = trim($args['card_holder_name']);
         $this->credit_card->cvv = strval(trim($args['card_cvv']));
-        $this->credit_card->exp_date = strval(trim($args['card_expiry']));
+        $this->credit_card->exp_date = strval(trim($month.$year));
 
     }
 
@@ -436,9 +481,13 @@ class Payeezy
      * 
      * 
      */ 
-    public function setSandboxMode()
+    public function setServer($server = 'PRODUCTION')
     {
-        $this->server = 'https://api-cert.payeezy.com/v1/transactions';
+        if (strtoupper(trim($server)) == 'TEST') { 
+            $this->server = 'https://api-cert.payeezy.com/v1/transactions';
+        } else { 
+            $this->server = 'https://api.payeezy.com/v1/transactions';
+        }
     }
 
     /**
@@ -586,9 +635,32 @@ class Payeezy
         return $this->postTransaction($payload, $headerArray);
     }
 
+    /**
+     * 
+     * 
+     * 
+     */
+    public function setCart($cart)
+    {
+        $this->cart = clone $cart;
 
-//ET121823
+        $address = array(
+            "name" => $this->cart->name_first . ' ' . $this->cart->name_last,
+            "street" => $this->cart->bill_address_1,
+            "city" => $this->cart->bill_address_city,
+            "state" => $this->cart->bill_address_state,
+            "zip" => $this->cart->bill_address_postal_code,
+            "country" => $this->cart->bill_address_country,
+            "phone" => $this->cart->bill_address_phone,
+            "email" => $this->cart->bill_email
+        );
 
+        empty($address['country']) ? $address['country'] = 'US' : false;
+
+        $this->setAddress('billing', $address);
+
+    } 
+    
     /**
      * Payeezy
      *

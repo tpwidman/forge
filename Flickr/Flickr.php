@@ -1,6 +1,6 @@
 <?php
 
-namespace zeekee\forge\other\Flickr;
+namespace zeekee\forge\Flickr;
 
 class Flickr
 {

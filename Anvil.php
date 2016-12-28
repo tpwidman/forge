@@ -290,6 +290,27 @@ class Anvil
         return array_reverse( $aReturn );
     }
 
+
+    public function stripSlashesFromArrayValues($array)
+    {
+        !is_array($array) ? $array = (array) $array : false;
+
+        foreach ($array as $key => $value) { 
+            if (!is_string($value)) {
+
+            } else { 
+                $array[$key] = stripslashes($value);
+            }            
+        }
+
+        return $array;
+    }
+
+    /**
+     * @param  [array] - an array of values/keys
+     * @param  string - the keys to be excluded
+     * @return [array] - clean array
+     */
     public function cleanArray($array, $restrict = '') 
     { 
         $return = array();

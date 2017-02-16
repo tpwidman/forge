@@ -111,17 +111,19 @@ class Payeezy extends Anvil
         
         $this->setCreditCardInfo($creditCard);
 
-        $this->amount = preg_replace("/[^0-9]/",'', number_format(preg_replace("/[^0-9\.]/",'', $transaction['payment']['amount'] ), 2 ));
+        $this->amount = preg_replace("/[^0-9]/",'', number_format(preg_replace("/[^0-9\.]/",'', $transaction['amount'] ), 2 ));
 
-        $results = json_decode($this->purchase(), true);        
+        $results = $this->purchase();     
 
-        ($results['transaction_status'] == 'approved') ? $return['authorized'] = 1 : false;
-                
-        $return['authorization_code'] = $results['correlation_id'];
-        $return['transaction_type'] = 'AUTH_CAPTURE';
-        $return['transaction_id'] = $results['transaction_id'];
-        $return['message'] = '[' . $id . ':' . $response['gateway_resp_code'] . '] [' . substr($transaction['payment']['cc_number'], -4) . ']' . $results['gateway_message'];
-        
+        if ($results['authorized']) { 
+            $return['authorized'] = 1;
+            $return['authorization_code'] = $results['authcode'];
+            $return['transaction_id'] = json_decode($results['raw'])->transaction_id;
+            $return['message'] = json_decode($results['raw'])->gateway_message;
+        } else {
+            $return['message'] = $results['response_code'];
+        }
+
         return (object) $return;
 
     }
@@ -177,7 +179,6 @@ class Payeezy extends Anvil
      */
     private function getPayload($transaction_type = '', $args = array()) 
     { 
-
 
         if ($transaction_type == "void" || 
             $transaction_type == 'refund' && isset($args['transaction_tag'])) {
@@ -240,8 +241,9 @@ class Payeezy extends Anvil
                         isset($item['line_item_total']) ? $total += $item['line_item_total'] : false;
                     }
                 }
-
                 $this->amount = preg_replace("/[^0-9]/", '', $total);
+                echo 'fds';
+            } else { 
 
             }
 
@@ -343,6 +345,7 @@ class Payeezy extends Anvil
             $this->_response['headers'] = $headerSent;    
             $this->_response['query'] = htmlentities($query) ;                    
         }
+
         return $response;
     }
 
@@ -658,7 +661,6 @@ class Payeezy extends Anvil
         empty($address['country']) ? $address['country'] = 'US' : false;
 
         $this->setAddress('billing', $address);
-
     } 
     
     /**

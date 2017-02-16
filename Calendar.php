@@ -119,7 +119,11 @@ class Calendar extends \DateTime
         $n = 0;
         $count = 0;
         foreach ($days as $day) {
-            $weeks[self::getWeekNumber($day)][] = $day;    
+            if ($day == 1 && self::getWeekNumber($day) == 53) { 
+                $weeks[1][] = $day;    
+            } else { 
+                $weeks[self::getWeekNumber($day)][] = $day;    
+            }
         }
 
         return $weeks;

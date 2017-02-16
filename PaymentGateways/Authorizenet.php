@@ -404,10 +404,10 @@ class Authorizenet extends Anvil
 
 
     /**
+     * This function is used to run an AuthorizationCapture
      * 
-     * 
-     * 
-     * 
+     * @param  array $transaction [contains all the information to process this transaction.]
+     * @return array [returns the results of the transaction.]
      */
     public function authorizeCapture($transaction)
     {
@@ -419,13 +419,13 @@ class Authorizenet extends Anvil
             'message' => ''
             );
 
-        $products = array();        
-        $id = $this->login;    
-        $pw = $this->password;        
+        $products = array();    
+
         !is_object($transaction) ? $transaction = (object) $transaction : false;
-        !empty($transaction->transaction_mode) ? $this->setServer($transaction->transaction_mode) : false;
-        !empty($transaction->transaction_id) ? $id = $transaction->transaction_id : false;
-        !empty($transaction->transaction_pw) ? $pw = $transaction->transaction_pw : false;
+
+        !empty($transaction->transaction_mode) ? $this->setServer($transaction->transaction_mode) : false;        
+        !empty($transaction->transaction_id) ? $id = $transaction->transaction_id : $id = $this->login;
+        !empty($transaction->transaction_pw) ? $pw = $transaction->transaction_pw : $pw = $this->password;
 
         $this->payment->cc_number = $this->scrubVar($this->payment->cc_number);
 
@@ -485,7 +485,7 @@ class Authorizenet extends Anvil
                 }            
 
                 $this->cart->total = (
-                ($this->cart->amount + $this->cart->taxes + $this->cart->handle_charge + $this->cart->ship_charge + $this->cart->gift_charge) - 
+                ($this->cart->amount + $this->cart->taxes + $this->cart->handle_charge + $this->cart->ship_charge) - 
                 $this->cart->promotional_discount);
 
             } else { 
@@ -501,18 +501,17 @@ class Authorizenet extends Anvil
                 $products[] = "x_line_item=".urlencode( implode( '<|>', $aEntry)) . '&'; 
 
                 $this->cart->total = (
-                    ($this->cart->amount + $this->cart->taxes + $this->cart->handle_charge + $this->cart->ship_charge + $this->cart->gift_charge) - 
+                    ($this->cart->amount + $this->cart->taxes + $this->cart->handle_charge + $this->cart->ship_charge) - 
                     $this->cart->promotional_amount);
             } 
 
         }    
-        //if ($aVars['amount'] == 0) { $aVars['amount'] = $nTemp; }      
 
         empty($this->cart->amount) ? $this->cart->amount = '0.00' : $this->cart->amount = $this->scrubVar($this->cart->amount, 'MONEY');
         empty($this->cart->taxes) ? $this->cart->taxes = '0.00' : $this->cart->taxes = $this->scrubVar($this->cart->taxes, 'MONEY');
         empty($this->cart->handle_charge) ? $this->cart->handle_charge = '0.00' : $this->cart->handle_charge = $this->scrubVar($this->cart->handle_charge, 'MONEY');
         empty($this->cart->ship_charge) ? $this->cart->ship_charge = '0.00' : $this->cart->ship_charge = $this->scrubVar($this->cart->ship_charge, 'MONEY');
-        empty($this->cart->gift_charge) ? $this->cart->gift_charge = '0.00' : $this->cart->gift_charge = $this->scrubVar($this->cart->gift_charge, 'MONEY');
+        // empty($this->cart->gift_charge) ? $this->cart->gift_charge = '0.00' : $this->cart->gift_charge = $this->scrubVar($this->cart->gift_charge, 'MONEY');
 
         $aAuthorizeNet  = array (
             "x_login"              => $id,
@@ -567,7 +566,7 @@ class Authorizenet extends Anvil
         $return['authorization_code'] = $response[4];
         $return['transaction_type'] = 'AUTH_CAPTURE';
         $return['transaction_id'] = $response[6];
-        $return['message'] = '[' . $id . ':' . $response[2] . '] [' . substr($transaction->payment['cc_number'], -4) . ']' . $response[3];
+        $return['message'] = '[' . strtoupper(substr($id, -4)) . ':' . $response[2] . '] [' . substr($transaction->payment['cc_number'], -4) . ']' . $response[3];
         ($this->debug) ? $return['query'] = $query : false;
         ($this->debug) ? $return['response'] = json_encode($http->response) : false;
 
@@ -896,22 +895,20 @@ class Authorizenet extends Anvil
     } 
     
     /**
-     * 
-     *      
      * private $server = 'https://secure2.authorize.net/gateway/transact.dll
      * https://test.authorize.net/gateway/transact.dll';
-     * 
-     * 
-     * 
      */ 
     public function setServer($server = 'PRODUCTION')
-    {    
-        
+    {            
         if ($server == 'API') { 
             $this->server = 'https://api2.authorize.net/xml/v1/request.api';
         } else if ($server == 'SANDBOX') { 
+            $this->login = '95LgR9sV';
+            $this->password = '69E7C2kh9LcycB4R';
             $this->server = 'https://apitest.authorize.net/xml/v1/request.api';
         } else if ($server == 'TEST') { 
+            $this->login = '95LgR9sV';
+            $this->password = '69E7C2kh9LcycB4R';
             $this->server = 'https://test.authorize.net/gateway/transact.dll';
         } else { 
             $this->server = 'https://secure.authorize.net/gateway/transact.dll';

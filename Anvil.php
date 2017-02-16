@@ -650,7 +650,10 @@ class Anvil
      * @return string
      */
     public static function dumpVariable($var)
-    {
+    {        
+        if(isset($var->tyfoon)) { 
+            unset($var->tyfoon);
+        }
         echo '<pre>';
         print_r($var);
         echo '</pre>';
@@ -795,6 +798,9 @@ class Anvil
      */
     public static function getAge($cDOB)
     {
+
+        $cDOB = date('Y-m-d', strtotime($cDOB));
+        
         if ($cDOB != null && ($cDOB != '0000-00-00' || $cDOB != '0000-00-00 00:00:00')) {
             $cDOB = strtolower(preg_replace("/[^0-9\/\-\.]/", '', trim(date('m/d/Y', strtotime($cDOB)))));
             if (strlen($cDOB) == 10 || strlen($cDOB) == 9 || strlen($cDOB) == 8) {
@@ -915,13 +921,12 @@ class Anvil
     function getRecordByTag($array, $tag = '') 
     { 
         !is_array($array) ? $array = (array) $array : false;
-        $return = array();        
-            foreach ($array as $n => $value) {
-                if (preg_match("/$tag/is", $value->tags)) { 
-                    return (object) $value;                
-                    break;
-                }            
-            }
+        foreach ($array as $n => $value) {
+            if (preg_match("/$tag/is", $value->tags)) { 
+                return (object) $value;                
+                break;
+            }            
+        }
         
     }
 
@@ -940,7 +945,8 @@ class Anvil
         $return = array();
         !is_array($array) ? $array = (array) $array : false;        
             foreach ($array as $n => $value) {
-                if (preg_match("/$tag/is", $value['tags'])) { 
+                !is_object($value) ? $value = (object) $value : false;
+                if (preg_match("/$tag/is", $value->tags)) { 
                     $return[] = $value;
                 }            
             }        
@@ -2260,17 +2266,12 @@ class Anvil
      */
     public static function substrWord($cString, $nLen = 250)
     {
-
         $aArray = str_word_count(strip_tags($this->stripWhiteSpace($cString)), 1);
-
         $aSlice = array_slice($aArray, 0, $nLen);
-
         if (sizeof($aArray) > $nLen) {
             return implode(' ', $aSlice) . ' ...';
-
         } else {
             return implode(' ', $aSlice);
-
         }
     }
 

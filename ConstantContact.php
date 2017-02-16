@@ -15,6 +15,9 @@ use Ctct\ConstantContact AS CC;
 use Ctct\Components\Contacts\Contact AS Contact;
 use Ctct\Components\Contacts\ContactList AS ContactList;
 use Ctct\Components\Contacts\EmailAddress AS CCEmailAddress;
+use Ctct\Components\Contacts\CustomField as CustomField;
+use Ctct\Components\Contacts\Address as Address;
+
 use Ctct\Exceptions\CtctException;
 
 class ConstantContact
@@ -35,7 +38,6 @@ class ConstantContact
     {
         $this->apiKey = $apikey;
         $this->accessToken = $token;
-
         $this->cc = new CC($this->apiKey);
     
     }
@@ -90,8 +92,6 @@ class ConstantContact
 
             !empty($additional['work_phone']) ? $contact->work_phone = $additional['work_phone'] : false;
 
-            //$contact->addAddress(Address::create( array("address_type"=>"BUSINESS","line1"=>$street,"city"=>$city,"state"=>$state,"postal_code"=>$zip)));
-            
             $this->cc->addContact($this->accessToken, $contact, $actualUser);
             
             return true;
@@ -105,12 +105,84 @@ class ConstantContact
     }
  
     /**
-     * 
-     * 
-     */ 
-    public function editContact()
+     * [updateContact description]
+     * @param  array  $vars  [description]
+     * @param  array  $lists [description]
+     * @return [type]        [description]
+     */
+    public function updateContact($vars = array(), $lists = array(), $actualUser = true)
     {
 
+        $allowedVars = array();
+
+        try {
+
+            $contact = $this->getContactByEmail($vars['email']);
+
+            if ($contact->id > 0) { 
+                !empty($vars['first_name']) ? $contact->first_name = $vars['first_name'] : false;
+                !empty($vars['last_name']) ? $contact->last_name = $vars['last_name'] : false;
+                !empty($vars['company']) ? $contact->company_name = $vars['company'] : false;
+                !empty($vars['job_title']) ? $contact->job_title = $vars['job_title'] : false;
+                !empty($vars['work_phone']) ? $contact->work_phone = $vars['work_phone'] : false;        
+
+                foreach ($lists as $v) { $contact->addList($v); }
+                
+                foreach ($vars as $key => $value) {
+                    if (preg_match("/^custom/", $key)) { 
+                        $field = new CustomField();
+                        $field->name = $key;
+                        $field->value = $value;
+                        $contact->AddCustomField($field);
+                    }
+                }
+
+                $contact->addAddress(Address::create( array(
+                    "address_type"=>"PERSONAL",
+                    "line1"=>$vars['street'],
+                    "city"=>$vars['city'],
+                    "state"=> $vars['state'],
+                    "state_code"=> $vars['state_code'],
+                    "postal_code"=>$vars['postal_code'])));               
+            
+                $this->cc->updateContact($this->accessToken, $contact, $actualUser);                
+
+            } else { 
+                $contact = new Contact();            
+                $contact->addEmail(trim(strtolower($vars['email'])));
+                
+                foreach ($lists as $v) { $contact->addList($v); }
+
+                foreach ($vars as $key => $value) {
+                    if (preg_match("/^custom/", $key)) { 
+                        $field = new CustomField();
+                        $field->name = $key;
+                        $field->value = $value;
+                        $contact->AddCustomField($field);
+                    }
+                }
+
+                $contact->addAddress(Address::create( array(
+                    "address_type"=>"PERSONAL",
+                    "line1"=>$vars['street'],
+                    "city"=>$vars['city'],
+                    "state"=> $vars['state'],
+                    "state_code"=> $vars['state_code'],
+                    "postal_code"=>$vars['postal_code'])));               
+
+                $contact->first_name = $vars['first_name'];            
+                $contact->last_name = $vars['last_name'];            
+                !empty($vars['company']) ? $contact->company_name = $vars['company'] : false;
+                !empty($vars['job_title']) ? $contact->job_title = $vars['job_title'] : false;
+                !empty($vars['work_phone']) ? $contact->work_phone = $vars['work_phone'] : false;        
+                $this->cc->addContact($this->accessToken, $contact, $actualUser);                
+            }        
+            return true;
+        } catch (CtctException $ex) {
+            $error = (array) $ex->getErrors();
+            $this->_errorMessage = $error[0]['error_message'];
+            return false;            
+        }        
     }
 
     /**
@@ -138,9 +210,13 @@ class ConstantContact
      * 
      *  @return array
      */ 
-    public function getList($id)
+    public function getList($id, $includeContacts = false)
     {
         $list = $this->cc->getList($this->accessToken, $id);
+
+        if ($includeContacts) {
+            $list->contacts = $this->cc->getContactsFromList($this->accessToken, $list->id)->results;
+        }
 
         return $list;
         

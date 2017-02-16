@@ -352,7 +352,7 @@ class Database
         foreach($lines as $line){
             $line = trim($line);
             if( $line && !self::startsWith($line,'--') ){
-                $sql .= $line . "\n";
+                $sql .= trim($line) . "\n";
             }
         }
 
@@ -426,38 +426,44 @@ class Database
     }
 
     /**
-     * 
-     * return value of errorMessage value
-     * 
-     * @return string 
-     * 
+     * [errorMessage description]
+     * @return [type] [description]
      */
     public function errorMessage()
     {
-
         if (is_array($this->errorMessage)) { 
             return implode("\n", $this->errorMessage);
         } else { 
             return $this->errorMessage;
-        }
-
-
-        
+        }        
     }
 
+    /**
+     * [fetch description]
+     * @param  string $type [description]
+     * @return [type]       [description]
+     */
     public function fetch($type = 'FETCH_OBJ')
     {
         $tableinfo = $sth->fetchAll(\PDO::FETCH_ASSOC);
     }
 
-
+    /**
+     * [getError description]
+     * @return [type] [description]
+     */
     public function getError()
     {
         $err = $this->dbh->errorInfo();
         return $err[2];
     }
 
-    public function getPrimaryKey($table)
+    /**
+     * [getPrimaryKey description]
+     * @param  [type] $table [description]
+     * @return [type]        [description]
+     */
+    private function getPrimaryKey($table)
     {
         $primaryKeyName = '';
 
@@ -469,7 +475,6 @@ class Database
             }
         }
     }
-
 
     /**
      * pre-defined sql insert command
@@ -487,7 +492,7 @@ class Database
         $sql = $this->buildQuery($table, 'insert', $variables);
         
         $fields = $this->setVariables($sql, $variables);
-        
+
         $sth = $this->runQuery($sql, $fields->vars);
 
         $err = $sth->errorInfo();
@@ -639,7 +644,7 @@ class Database
     public function runSourceCommand($sqlfile) {
         
         $query = fread(fopen($sqlfile, 'r'), filesize($sqlfile));
-        
+
         $pieces  = $this->db_split_sql($query);
         for ($i=0; $i<count($pieces); $i++) {
             $pieces[$i] = trim($pieces[$i]);
@@ -775,11 +780,11 @@ class Database
                 return $sth->fetchAll(\PDO::FETCH_OBJ);
             }
         } catch ( \PDOException $e) {
-            echo $e->getCode() . ':' . $e->getMessage();
+            // echo $e->getCode() . ':' . $e->getMessage();
             return $e->getCode() . ':' . $e->getMessage();
 
         } catch ( \Exception $e ) {
-            echo $e->getCode() . ':' . $e->getMessage();
+            // echo $e->getCode() . ':' . $e->getMessage();
             return $e->getCode() . ':' . $e->getMessage();
         }
     }   
@@ -789,15 +794,16 @@ class Database
     * 
     * @param  string $table     [the table to update]
     * @param  array  $variables [variables to be used when updating the record]
+    * @param  array $constraints 
     * 
     * @return integer    
     */
-    public function update($table, $variables)
+    public function update($table, $variables, $constraints = array())
     {
      
         is_object($variables) ? $variables = (array) $variables : false;    
-        $sql = $this->buildQuery($table, 'update', $variables);
-        $fields = $this->setVariables($sql, $variables);
+        $sql = $this->buildQuery($table, 'update', $variables, $constraints);
+        $fields = $this->setVariables($sql, array_merge($variables, $constraints));
         $sth = $this->runQuery($sql, $fields->vars);
         $err = $sth->errorInfo();
 

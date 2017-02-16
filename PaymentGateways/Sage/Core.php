@@ -258,11 +258,8 @@ class Core
 
     public function setAuthenticationHeader($payload)
     {
-
         $hmac = $this->makeHmac($payload);
-
         $this->_postHeaders['Authentication'] = $this->mId . ':' .$hmac;
-
     }
 
 
@@ -303,15 +300,6 @@ class Core
     public function setVerb($verb)
     {
         $this->verb = $verb;
-    }
-
-    /**
-     * 
-     * 
-     */
-    protected function pi()
-    {
-        return rand();
     }
 
     /**

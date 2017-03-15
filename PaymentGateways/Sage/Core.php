@@ -4,12 +4,30 @@ namespace Sage;
 
 class Core
 {
-
     /**
-     *    Merchant Id Number:  
-     *    VT_ID / M_ID:  
-     *    User Id:  
-     *    Password:  
+        Links and Information
+        Virtual Terminal https://www.sagepayments.net/virtualterminal
+        Documentation https://www.sagepayments.net/developer/
+
+        From the Virtual Terminal you can review transactions and batches, set up recurring 
+        transactions, pull reporting and perform any necessary manual transactions. 
+
+        **Please note a user's manual can be found in the Virtual Terminal located on the Help menu. **
+
+        Merchant Id Number:  484622183455
+        VT_ID / M_ID:  484622183455
+        User Id:  484622183455
+        Password:  V4K1L2N2O2P2
+
+        Note: For security purposes, we suggest you change your password as soon as possible.
+
+        DBA Name:  ZEEKEE - TEST
+        M_Key Number:  S8J7L8E7X2K3
+
+        Helpful information for new users and resources such as how-to articles, PCI compliance resources, account change forms, training videos and contact information can be found on our knowledgebase: https://support.sagepayments.com 
+
+        Test account transaction activity is purged from the Virtual Terminal daily and the test 
+        account will be removed from the gateway after 60 days of inactivity.
      */ 
 
     private $_vars;

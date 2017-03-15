@@ -28,7 +28,7 @@ class Ups
     private $service = 'ALL';
     private $container = 'VARIABLE';
     private $methods = array(
-        '0' => array('label' => 'USPS First Class Mail', 'handle_charge' => 0, 'enabled' => 0));
+        '0' => array('label' => 'UPS First Class Mail', 'handle_charge' => 0, 'enabled' => 0));
     /**
      * @ignore
      */

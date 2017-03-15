@@ -15,9 +15,9 @@ class Fedex
     private $boxWidth = 0;
     private $boxHeight = 0;
     private $boxDepth = 0;
-    private $uspsAccount = '';
-    private $uspsPassword = '';
-    private $uspsHanldingFee = 0;
+    private $account = '';
+    private $password = '';
+    private $hanldingFee = 0;
     private $originZipCode = '';
     private $address;
     private $city;
@@ -28,7 +28,14 @@ class Fedex
     private $service = 'ALL';
     private $container = 'VARIABLE';
     private $methods = array(
-        '0' => array('label' => 'USPS First Class Mail', 'handle_charge' => 0, 'enabled' => 0));
+        'FIRST_OVERNIGHT' => 'First Overnight',
+        'PRIORITY_OVERNIGHT' => 'Priority Overnight',
+        'STANDARD_OVERNIGHT' => 'Standard Overnight',
+        'FEDEX_2_DAY_AM' => 'Two-day AM delivery',
+        'FEDEX_2_DAY' => 'Two-day delivery',
+        'FEDEX_EXPRESS_SAVER' => 'Express Saver',
+        'FEDEX_GROUND' => 'Ground');
+
     /**
      * @ignore
      */

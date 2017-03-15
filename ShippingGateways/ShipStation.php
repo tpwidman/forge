@@ -16,20 +16,27 @@ class ShipStation
     private $endpoint;
     private $httpMethod;
     private $authenticationToken;
-
     private $server = 'https://ssapi.shipstation.com';
-
     private $boxWidth = 0;
     private $boxHeight = 0;
     private $boxDepth = 0;
     private $originZipCode = '';
     private $address;
-    private $toCity;
-    private $toState;
-    private $toPostalCode;
-    private $toCountry;
+    private $shipTo = array();
+    private $billTo = array();
     private $boxes;
     private $methods = array();
+    private $vars = array();
+    private $items = array();
+    private $errorMessage = '';
+
+    private $orderStatusOptions = array(
+        'awaiting_payment' => 'Awaiting Payment',
+        'awaiting_shipment' => 'Awaiting Shipment',
+        'on_hold' => 'On Hold',
+        'cancelled' => 'Cancelled',
+        'shipped' => 'Shipped'
+        );
 
     /**
      * @ignore
@@ -51,6 +58,54 @@ class ShipStation
     }
 
     /**
+     * @ignore
+     */
+    public function __get($index)
+    {
+        return $this->vars[$index];
+    }
+
+    /**
+     * @ignore
+     */
+    public function __set($index, $value)
+    {
+        $this->vars[$index] = $value;
+    }
+
+
+    public function addItem($vars = array())
+    {
+
+        $return = array();
+
+        !empty($vars['lineItemKey']) ? $return[$vars['lineItemKey']] = $vars[$vars['lineItemKey']] : false;
+        !empty($vars['sku']) ? $return[$vars['sku']] = $vars[$vars['sku']] : false;
+        !empty($vars['name']) ? $return[$vars['name']] = $vars[$vars['name']] : false;
+        !empty($vars['imageUrl']) ? $return[$vars['imageUrl']] = $vars[$vars['imageUrl']] : false;
+        !empty($vars['quantity']) ? $return[$vars['quantity']] = $vars[$vars['quantity']] : false;
+        !empty($vars['unitPrice']) ? $return[$vars['unitPrice']] = $vars[$vars['unitPrice']] : false;
+        !empty($vars['taxAmount']) ? $return[$vars['taxAmount']] = $vars[$vars['taxAmount']] : false;
+        !empty($vars['shippingAmount']) ? $return[$vars['shippingAmount']] = $vars[$vars['shippingAmount']] : false;
+        !empty($vars['warehouseLocation']) ? $return[$vars['warehouseLocation']] = $vars[$vars['warehouseLocation']] : false;
+        !empty($vars['productId']) ? $return[$vars['productId']] = $vars[$vars['productId']] : false;
+        !empty($vars['fulfillmentSku']) ? $return[$vars['fulfillmentSku']] = $vars[$vars['fulfillmentSku']] : false;
+        !empty($vars['adjustment']) ? $return[$vars['adjustment']] = $vars[$vars['adjustment']] : false;
+        !empty($vars['upc']) ? $return[$vars['upc']] = $vars[$vars['upc']] : false;
+        
+        !empty($vars['weight']) ? $return[$vars['weight']] = $vars[$vars['weight']] : false;
+        !empty($vars['weight_units']) ? $return[$vars['weight_units']] = $vars[$vars['weight_units']] : false;
+
+        !empty($vars['weight']) ? $return[$vars['weight']] = $vars[$vars['weight']] : false;
+        !empty($vars['weight_units']) ? $return[$vars['weight_units']] = $vars[$vars['weight_units']] : false;
+
+        return $array;
+
+
+    }
+
+   
+    /**
      * [buildAuthenticationToken description]
      * @return [type] [description]
      */
@@ -59,6 +114,39 @@ class ShipStation
         $this->authenticationToken = base64_encode($this->apikey . ':' . $this->apisecret);       
 
     }    
+
+    /**
+     * [createOrder description]
+     * @return [type] [description]
+     */
+    public function createOrder() 
+    {
+
+        
+        $data = array(
+            "orderNumber" => $this->orderNumber,
+            "orderKey" => $this->orderKey,
+            "orderDate" => $this->orderDate,
+            "paymentDate" => $this->paymentDate,
+            "shipByDate" => $this->shipByDate,
+            "orderStatus" => $this->orderStatus,
+            "customerId" => $this->customerId,
+            "customerUsername" => $this->customerUsername,
+            "customerEmail" => $this->customerEmail,
+            "billTo" => $this->getAddress('billTo', 'array'),
+            "shipTo" => $this->getAddress('shipTo', 'array')
+            );
+
+        $ret = $this->curl('/orders/createorder', $data, array(), 'POST');
+
+        if ($ret->orderId > 0) { 
+            $this->orderId;
+            return true;
+        } else { 
+            $this->errorMessage = $ret->ExceptionMessage;
+            return false;
+        }
+    }
 
     /**
      * post data in fields to url
@@ -160,12 +248,14 @@ class ShipStation
         return $output;
     }   
 
-    public function dump($var) {
-        echo '<pre>';
-        print_r($var);
-        echo '</pre>';
-    } 
-
+    /**
+     * [getError description]
+     * @return [type] [description]
+     */
+    public function getError()
+    {
+        return $this->errorMessage;
+    }
 
     /**
      * [getAutenticationToken description]
@@ -217,11 +307,11 @@ class ShipStation
                 $return[$value->code] = array();
                 $vars = array(
                     'carrier' => $value->code,
-                    'fromPostalCode' => $this->originZipCode,
-                    'toState' => $this->toState,
-                    'toCountry' => $this->toCountry,
-                    'toPostalCode' => $this->toPostalCode,
-                    'toCity' => $this->toCity,
+                    'fromPostalCode' => $this->shipTo->originZipCode,
+                    'toState' => $this->shipTo->toState,
+                    'toCountry' => $this->shipTo->toCountry,
+                    'toPostalCode' => $this->shipTo->toPostalCode,
+                    'toCity' => $this->shipTo->toCity,
                     'weight' => ($box['weight']*16) // conversion to ounces
                     );
 
@@ -253,13 +343,54 @@ class ShipStation
      * [getAddress description]
      * @return [type] [description]
      */
-    public function getAddress() 
+    public function getAddress($type = 'shipTo', $return = 'string') 
     {
-        return $this->address . ',' 
-        . $this->toCity . ',' 
-        . $this->toState . ',' 
-        . $this->toPostalCode . ',' 
-        . $this->toCountry;        
+        if($return == 'array') { 
+            if (strtolower($type) == 'shipto') { 
+                return array(
+                    "name" => $this->shipTo->toName,
+                    "company" => $this->shipTo->toCompany,
+                    "street1" => $this->shipTo->toStreet1,
+                    "street2" => $this->shipTo->toStreet2,
+                    "street3" => $this->shipTo->toStreet3,
+                    "city" => $this->shipTo->toCity,
+                    "state" => $this->shipTo->toState,
+                    "postalCode" => $this->shipTo->toPostalCode,
+                    "country" => $this->shipTo->toCountry,
+                    "phone" => $this->shipTo->toPhone,
+                    "residential" => $this->shipTo->toResidential
+                );
+            } else { 
+                return array(
+                    "name" => $this->billTo->toName,
+                    "company" => $this->billTo->toCompany,
+                    "street1" => $this->billTo->toStreet1,
+                    "street2" => $this->billTo->toStreet2,
+                    "street3" => $this->billTo->toStreet3,
+                    "city" => $this->billTo->toCity,
+                    "state" => $this->billTo->toState,
+                    "postalCode" => $this->billTo->toPostalCode,
+                    "country" => $this->billTo->toCountry,
+                    "phone" => $this->billTo->toPhone,
+                    "residential" => $this->billTo->toResidential
+                );
+            }        
+        } else { 
+            if (strtolower($type) == 'shipto') { 
+                return $this->shipTo->toStreet1 . ',' 
+                . $this->shipTo->toCity . ',' 
+                . $this->shipTo->toState . ',' 
+                . $this->shipTo->toPostalCode . ',' 
+                . $this->shipTo->toCountry;        
+            } else { 
+                return $this->billTo->toStreet1 . ',' 
+                . $this->billTo->toCity . ',' 
+                . $this->billTo->toState . ',' 
+                . $this->billTo->toPostalCode . ',' 
+                . $this->billTo->toCountry;        
+            }
+        }
+        
     }
 
     /**
@@ -364,6 +495,23 @@ class ShipStation
     }
 
     /**
+     * [listTags description]
+     * @return [type] [description]
+     */
+    public function listUsers($showInactive = false)
+    {
+
+        //showInactive=showInactive
+
+        return $this->curl('/users','',array());
+
+    }
+
+
+
+
+
+    /**
      * [setServer description]
      */
     public function setServer()
@@ -374,22 +522,25 @@ class ShipStation
     /**
      * [setAddress description]
      */
-    public function setAddress($vars = array())
+    public function setAddress($vars = array(), $type = 'shipTo')
     {
 
-        if (!empty($vars['address'])) { 
-            $this->address = $vars['address'];
-            !empty($vars['city']) ? $this->toCity = $vars['city'] : false;
-            !empty($vars['state']) ? $this->toState = $vars['state'] : false;
-            !empty($vars['postalcode']) ? $this->toPostalCode = $vars['postalcode'] : false;
-            !empty($vars['country']) ? $this->toCountry = $vars['country'] : false;
-        } else {
-            $this->address = '';
-            $this->toCity = '';
-            $this->toState = '';
-            $this->toPostalCode = '';
-            $this->toCountry = '';
+        foreach ($vars as $key => $value) { 
+            if (!preg_match("/^to/is", $key)) { 
+                (strtolower($key) == 'name') ? $vars['toName'] = $value : false;
+                (strtolower($key) == 'company') ? $vars['toCompany'] = $value : false;
+                (strtolower($key) == 'street1') ? $vars['toStreet1'] = $value : false;
+                (strtolower($key) == 'street2') ? $vars['toStreet2'] = $value : false;
+                (strtolower($key) == 'street3') ? $vars['toStreet3'] = $value : false;
+                (strtolower($key) == 'city') ? $vars['toCity'] = $value : false;
+                (strtolower($key) == 'state') ? $vars['toState'] = $value : false;
+                (strtolower($key) == 'postalcode') ? $vars['toPostalCode'] = $value : false;
+                (strtolower($key) == 'country') ? $vars['toCountry'] = $value : false;
+                unset($vars[$key]);
+            }
         }
+
+        (strtolower($type) == 'billto') ? $this->billTo = (object) $vars : $this->shipTo = (object) $vars;    
     }
 
     /**

@@ -302,8 +302,8 @@ class Usps
                 }
             }
         } else {
-            if (!empty($params['ERROR'])) {
-                $aRates['ERROR'] = $params['ERROR']['DESCRIPTION'];
+            if (!empty($params['RATEV4RESPONSE'][0]['ERROR'])) {
+                $aRates['ERROR'] = $params['RATEV4RESPONSE'][0]['ERROR']['DESCRIPTION'];
             } else {
                 foreach ($params['RATEV4RESPONSE'] AS $nPackage => $aPackage) {
                     foreach ($aPackage AS $c => $v) {

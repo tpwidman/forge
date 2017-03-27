@@ -364,13 +364,33 @@ class Anvil
     }
 
     /**
+     * [createDateRange description]
+     * @param  [type] $startDate [description]
+     * @param  [type] $endDate   [description]
+     * @param  string $format    [description]
+     * @return [type]            [description]
+     */
+    public function createDateRange($startDate, $endDate, $format = "Y-m-d")
+    {
+        $begin = new DateTime($startDate);
+        $end = new DateTime($endDate);
+        $interval = new DateInterval('P1D'); // 1 Day
+        $dateRange = new DatePeriod($begin, $interval, $end);
+        $range = [];
+        foreach ($dateRange as $date) {
+            $range[] = $date->format($format);
+        }
+        return $range;
+    }
+
+    /**
      * create a random text string
      * @see  pi()
      * @return string
      */
-    public function csrf()
+    public function csrf($string)
     {
-        return self::encryptString(substr(self::pi(9999), rand(0,9900), rand(8,80)));
+        return self::encryptString($string);
     }
 
 
@@ -896,16 +916,12 @@ class Anvil
     {
         if (getenv('HTTP_CLIENT_IP')) {
             return getenv('HTTP_CLIENT_IP');
-
         } elseif (getenv('HTTP_X_FORWARDED_FOR')) {
             return getenv('HTTP_X_FORWARDED_FOR');
-
         } elseif (getenv('HTTP_X_FORWARDED')) {
             return getenv('HTTP_X_FORWARDED');
-
         } elseif (getenv('HTTP_FORWARDED_FOR')) {
             return getenv('HTTP_FORWARDED_FOR');
-
         } elseif (getenv('HTTP_FORWARDED')) {
             return getenv('HTTP_FORWARDED');
         } else {

@@ -268,42 +268,26 @@ class Database
      */
     public function generateFullTextQuery($searchTxt = '')
     {
-        /*
-        $text = '';
-    
+        //$text = '';
 
-    $string = addslashes(urldecode(trim($string)));
+        $this->sqlQuery("SHOW VARIABLES LIKE 'ft_min%';");
+        $terms = explode(' ', preg_replace('/\s+/',' ', trim($searchTxt)));
 
-    $string = str_replace(" ", "[[:space:]]", $string);
-
-    $string = str_replace("(", "[(]", $string);
-
-    $string = str_replace(")", "[)]", $string);
-
-    $string = str_replace("-", "\-", $string);
-
-    return $string;
-
-    $var = mysql_fetch_object( mysql_query( "SHOW VARIABLES LIKE 'ft_min%';" ) );
-    
-    $terms = explode(' ', preg_replace('/\s+/',' ', trim($searchTxt)));
-
-    foreach ($terms AS $cKey => $cValue) {
-        if (strlen($cValue) >= $var->Value) { 
-            $terms[$cKey] = trim($cValue) . '*';
-        } else { 
-            unset($terms[$cKey]);
+        foreach ($terms AS $cKey => $cValue) {
+            if (strlen($cValue) >= $var->Value) { 
+                $terms[$cKey] = trim($cValue) . '*';
+            } else { 
+                unset($terms[$cKey]);
+            }
         }
-    }
 
-    if (sizeof($terms) > 0) {
-        $terms[0] = '+' . $terms[0];
-        return implode(' ', $terms);
-    } else { 
-        return '';
-    } 
-
-    */
+        if (sizeof($terms) > 0) {
+            $terms[0] = '+' . $terms[0];
+            return implode(' ', $terms);
+        } else { 
+            return '';
+        }    
+    
     }
 
     

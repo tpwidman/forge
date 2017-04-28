@@ -24,7 +24,7 @@ class Image
      * @param  integer $nQuality [image quality]
      * 
      */
-    public function reduceImage($cInput, $cOutput, $nH = 1600, $nW = 2560, $xType = 'normal', $nQuality = 100)
+    public function reduceImage($cInput, $cOutput, $nH = 1600, $nW = 2560, $xType = 'normal', $nQuality = 75)
     {
       
         if (function_exists('imagecreatefromgif')) {
@@ -190,7 +190,7 @@ class Image
      * @param  integer $nQuality [image quality]
      * 
      */
-    public function resizeImage($cInput, $cOutput, $nH = 1600, $nW = 2560, $xType = 'normal', $nQuality = 100)
+    public function resizeImage($cInput, $cOutput, $nH = 1600, $nW = 2560, $xType = 'normal', $nQuality = 75)
     {
       
         if (function_exists('imagecreatefromgif')) {
@@ -340,6 +340,8 @@ class Image
             } else {
                 imageJPEG($src_img, $cOutput, $nQuality);
             }
+            // Free up memory
+            imagedestroy($src_img);
         }
     }
 

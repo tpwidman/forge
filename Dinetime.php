@@ -6,7 +6,7 @@
  * 
  *  AccessKey: 0E6B5DE0D55F74BE0693277CF3BA3D04
  *  SecretKey: 0EAE125731BF5818C0785D444ACFCBF0241CCD23B04B681B825CA25082E2BEBE
- *  
+ *  Client Account: d452b157-f29e-11e4-a4c2-22000b85076e
  */  
 class Dinetime
 {
@@ -109,7 +109,7 @@ class Dinetime
         if ($debug) { 
             curl_setopt($ch, CURLOPT_HEADER, 1); // set to 0 to eliminate header info from response       
             curl_setopt($ch, CURLINFO_HEADER_OUT, true);
-        } else { 
+        } else {   
             curl_setopt($ch, CURLOPT_HEADER, 0); // set to 0 to eliminate header info from response       
             curl_setopt($ch, CURLINFO_HEADER_OUT, false);
         }
@@ -132,5 +132,18 @@ class Dinetime
 
         return $output;
     }    
+
+
+    private function generateHmac($path, $array = array()) { 
+        $vars = array();
+        $vars[] = date('c');
+        $vars[] = $this->accessKey;
+
+
+        hash_hmac('sha1', $url, $usr->apikey));
+
+    }
+
+
 
 }

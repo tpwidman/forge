@@ -3,10 +3,6 @@
  * @author Nicolas Colbert <ncolbert@zeekee.com>
  * @copyright 2002 Zeekee Interactive
  *
- * Test API URL: https://partner-east-test.cloud9ortho.com/GetData.ashx
- * Username: ZeeKee
- * Password: pa$$word
- * Client ID: 35f38cb1-7792-4f5f-9c72-4802b46d19c9
  * 
  * https://partner.cloud9ortho.com or https://partner-east.cloud9ortho.com 
  * to https://atl-partner.cloud9ortho.com on the agreed upon date and time.
@@ -20,9 +16,7 @@ class Cloud9
 
     private $clientId;
 
-    private $server = 'https://partner-east-test.cloud9ortho.com/GetData.ashx';
-
-    //private $server = 'https://atl-partner-test.cloud9ortho.com/GetData.ashx';
+    private $server = 'https://partner.cloud9ortho.com/GetData.ashx';
 
     private $requestXml = array(
         'ClientID' => '',
@@ -34,6 +28,7 @@ class Cloud9
 
     private $xmlHeader = '<GetDataRequest xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.practica.ws/cloud9/partners/">';
 
+    private $errorMessage;
 
     /**
      * @ignore
@@ -51,6 +46,23 @@ class Cloud9
     public function __destruct()
     {
         
+    }
+
+    /**
+     * 
+     * 
+     */ 
+    private function datetimestamp($date, $dateOnly = true) 
+    { 
+        
+        if ($dateOnly) { 
+            empty($date) ? $date = date('m/d/Y') : $date = date('m/d/Y', strtotime($date));
+        } else { 
+            empty($date) ? $date = date('m/d/Y 00:00 \A\M') : $date = date('m/d/Y 00:00 \A\M', strtotime($date));
+        }
+
+        return $date;
+
     }
 
     /**
@@ -153,35 +165,6 @@ class Cloud9
     }    
 
     /**
-     * [return a properly formated timestamp for this platform]
-     * @param  string  $date     [a string representing the datetime value]
-     * @param  boolean $dateOnly [return only a formated date string not a datetime]
-     * @return string            [the properly formated timestamp.]
-     */
-    private function datetimestamp($date, $dateOnly = true) 
-    { 
-        
-        if ($dateOnly) { 
-            empty($date) ? $date = date('m/d/Y 00:00:00 \A\M') : $date = date('m/d/Y', strtotime($date));
-        } else { 
-            empty($date) ? $date = date('m/d/Y 00:00 \A\M') : $date = date('m/d/Y 00:00 \A\M', strtotime($date));
-        }
-        return $date;
-    }
-
-    /**
-     * [dumpout the contents of a variable]
-     * @param  [various] $var [a variable to be dumped.]
-     * @return none
-     */
-    private function dump($var)
-    {
-        echo '<pre>';
-        print_r($var);
-        echo '</pre>';
-    }
-
-    /**
      * 
      * @param $date valid date stamp - 12/30/1999 12:00:00 AM
      * 
@@ -194,6 +177,27 @@ class Cloud9
 
     }
 
+    /**
+     * [GetAppointmentStatusDescriptions description]
+     */
+    public function GetAppointmentStatusDescriptions()
+    {
+        $this->requestXml['Procedure'] = 'GetAppointmentStatusDescriptions';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+
+
+    /**
+     * 
+     */ 
+    public function GetAppointmentListByPatient($clientId) 
+    {
+        $this->requestXml['Procedure'] = 'GetAppointmentListByPatient';
+        $this->requestXml['Parameters']['patGUID'] = $clientId;
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);            
+    }
 
     /**
      * 
@@ -223,79 +227,268 @@ class Cloud9
     
     }
 
-
-    
-
-    public function getLocations()
+    /**
+     * [GetAppointmentStatusDescriptions description]
+     */
+    public function GetContracts()
     {
+        $this->requestXml['Procedure'] = 'GetContracts';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);         
+    }
+
+    /**
+     * [GetFeeSchedules description]
+     */
+    public function GetFeeSchedules()
+    {
+        $this->requestXml['Procedure'] = 'GetFeeSchedules';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+
+    /**
+     * [GetFeeScheduleEntries description]
+     */
+    public function GetFeeScheduleEntries($guid)
+    {
+        $this->requestXml['Procedure'] = 'GetFeeScheduleEntries';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);           
+    }
+
+
+    /**
+     * [GetInsuranceContracts description]
+     */
+    public function GetInsuranceContracts()
+    {
+        $this->requestXml['Procedure'] = 'GetInsuranceContracts';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+
+    public function getErrorMessage()
+    {
+        return $this->errorMessage;
+    }
+
+    /**
+     * [GetFeeScheduleTypes description]
+     */
+    public function GetFeeScheduleTypes()
+    {
+        $this->requestXml['Procedure'] = 'GetFeeScheduleTypes';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+
+    /**
+     * This will return all the locations configured in the system.
+     *
+     * return array [an associative array with the LocationCode as the key]
+     */
+    public function GetLocations()
+    {
+        $return = array();
         $this->requestXml['Procedure'] = 'GetLocations';    
         $response = $this->processRequsest();        
-
-        if ($response->ResponseStatus == 'Success') { 
-            $array = array();
-            foreach ($response->Records->Record as $n => $record) { 
-                $array[] = $record;
-            }
-            return $array;
-        } else { 
-            return array();
+        $array = $this->parseResponse($response);       
+        foreach ($array as $k => $v) {             
+            $v = (array) $v;            
+            $return[$v['LocationCode']] = (object) $v;
         }
+        return $return;
+    }
 
+    /**
+     * [GetPartnerClientWindow description]
+     */
+    public function GetPartnerClientWindow()
+    {
+        $this->requestXml['Procedure'] = 'GetPartnerClientWindow';    
+        $response = $this->processRequsest();        
+
+        return $this->parseResponse($response);       
+    }
+
+    /**
+     * [GetPatientAddress description]
+     */
+    public function GetPatientAddress()
+    {
+        $this->requestXml['Procedure'] = 'GetPatientAddress';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+
+     /**
+     * [GetPatientEmail description]
+     */
+    public function GetPatientEmail()
+    {
+        $this->requestXml['Procedure'] = 'GetPatientEmail';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+
+    /**
+     * [GetPatientInsurancePolicies description]
+     */
+    public function GetPatientInsurancePolicies()
+    {
+        $this->requestXml['Procedure'] = 'GetPatientInsurancePolicies';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+    
+    /**
+     * [GetPatientList description]
+     */
+    public function GetPatientList($date = '')
+    {
+        $this->requestXml['Procedure'] = 'GetPatientList';  
+        $response = $this->processRequsest();  
+        return $this->parseResponse($response);
+    }
+
+    /**
+     * [GetPatientPhone description]
+     */
+    public function GetPatientPhone()
+    {
+        $this->requestXml['Procedure'] = 'GetPatientPhone';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+
+    /**
+     * [GetPatientReferralLinks description]
+     */
+    public function GetPatientReferralLinks()
+    {
+        $this->requestXml['Procedure'] = 'GetPatientReferralLinks';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+
+    /**
+     * [GetPatientResponsiblePartyLinks description]
+     */
+    public function GetPatientResponsiblePartyLinks()
+    {
+        $this->requestXml['Procedure'] = 'GetPatientResponsiblePartyLinks';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+
+    /**
+     * [GetResponsiblePartyEmail description]
+     */
+    public function GetResponsiblePartyEmail()
+    {
+        $this->requestXml['Procedure'] = 'GetResponsiblePartyEmail';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+
+    public function GetResponsiblePartyEmailByPatient($clientId) 
+    {
+        $this->requestXml['Procedure'] = 'GetResponsiblePartyEmailByPatient';
+        $this->requestXml['Parameters']['patGUID'] = $clientId;
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);               
     }
 
     
-    /**
-     * 
-     * This stored procedure provides a list of all responsible party phone numbers in the database.
-     *
-     * @return array [all the values returned = key is the ResponsiblePartyGUID]
-     */ 
-    public function getResponsiblePartyPhone() 
-    { 
-        $array = array();
-        
-        $this->requestXml['Procedure'] = 'GetResponsiblePartyPhone';        
-        
+
+     /**
+     * [GetPatientStatuses description]
+     */
+    public function GetPatientStatuses()
+    {
+        $this->requestXml['Procedure'] = 'GetPatientStatuses';    
         $response = $this->processRequsest();        
-        if ($response->ResponseStatus == 'Success') {             
-            foreach ($response->Records->Record as $n => $record) {                 
-                !array_key_exists(strval($record->ResponsiblePartyGUID), $array) ? $array[strval($record->ResponsiblePartyGUID)] = array() : false;
-                $array[strval($record->ResponsiblePartyGUID)][] = $record;
-            }        
-        }
-        return $array;        
+        return $this->parseResponse($response);       
+    }
+
+     /**
+     * [GetResponsiblePartyList description]
+     */
+    public function GetResponsiblePartyList()
+    {
+        $this->requestXml['Procedure'] = 'GetResponsiblePartyList';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+
+     /**
+     * [GetResponsiblePartyPhone] This stored procedure provides a list of all 
+     * responsible party phone numbers in the database.
+     *
+     * @return array [list of all responsible party phone numbers in the database]
+     */
+    public function GetResponsiblePartyPhone()
+    {
+        $this->requestXml['Procedure'] = 'GetResponsiblePartyPhone';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
+    }
+    
+    /**
+     * [GetReferrals] This stored procedure provides a list of every professional 
+     * in the database who is a potential referral source.
+     *
+     * @return array [list of every professional in the database who is a potential referral source]
+     */
+    public function GetReferrals()
+    {
+        $this->requestXml['Procedure'] = 'GetReferrals';    
+        $response = $this->processRequsest();        
+        return $this->parseResponse($response);       
     }
 
     /**
-     * 
-     * This stored procedure provides a list of all employees in the database.
+     * [GetStaff] This stored procedure provides a .
      *
-     * @return array [all the values returned = key is the EmployeeGUID]
-     */ 
-    public function getStaff() 
-    { 
-        $array = array();
-        
-        $this->requestXml['Procedure'] = 'GetStaff';        
-        
-        $response = $this->processRequsest();
-        
-        if ($response->ResponseStatus == 'Success') {             
-            foreach ($response->Records->Record as $n => $record) {                 
-                $array[strval($record->EmployeeGUID)] = $record;                
-            }        
-        }
-        return $array;        
+     * @return  array [list of all employees in the database underlying 
+     * record is an object]
+     */
+    public function GetStaff()
+    {
+        $this->requestXml['Procedure'] = 'GetStaff';    
+        $response = $this->processRequsest();                
+        return $this->parseResponse($response);        
     }
+
 
     /**
      * 
      */ 
     private function parseResponse($response) 
     { 
+        if ($response->ResponseStatus == 'Success') { 
+            return $this->parseRecord($response->Records->Record);
+        } else { 
+            return array(
+                'code' => $response->ErrorCode,
+                'message' => $response->ErrorMessage,
+                );
+        }
+    }
 
-        return simplexml_load_string($response->response);
-
+    /**
+     * [parseRecord]
+     * @param  [type] $record [description]
+     * @return [array] an array of all the records.
+     */
+    private function parseRecord($record) 
+    {
+        $array = array();
+        foreach ($record as $n => $record) { 
+            $array[] = $record;
+        }
+        return $array;
     }
 
     /**
@@ -303,17 +496,10 @@ class Cloud9
      */ 
     private function processRequsest() 
     { 
-
         $xml = $this->xmlCreate('GetDataRequest', $this->requestXml);
-
         $xml = str_replace('<GetDataRequest>', $this->xmlHeader, $xml);
-
-        //echo htmlentities($xml);
-
         $resp = $this->curl($this->server, $xml, array('Content-Type' => 'text/xml'), 'POST');
-
-        return $this->parseResponse($resp);
-
+        return simplexml_load_string($resp->response);
     }
 
 

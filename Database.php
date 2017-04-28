@@ -133,12 +133,15 @@ class Database
                 }
             }   
             if (array_key_exists($primary, $variables)) { 
-                $sql = "INSERT INTO $table ( $primary, " . implode(' , ', $fields) . " ) VALUES ( '$variables[$primary]', " . implode(' , ', $values) . " );";
+                if (empty($variables[$primary])) { 
+                    $sql = "INSERT INTO $table ( $primary, " . implode(' , ', $fields) . " ) VALUES ( null, " . implode(' , ', $values) . " );";
+                } else { 
+                    $sql = "INSERT INTO $table ( $primary, " . implode(' , ', $fields) . " ) VALUES ( '$variables[$primary]', " . implode(' , ', $values) . " );";
+                }
             } else { 
                 $sql = "INSERT INTO $table ( " . implode(' , ', $fields) . ' ) VALUES ( ' . implode(' , ', $values) . " );";    
             }
-        }
-        
+        }        
         return $sql;
     }
 
@@ -521,7 +524,7 @@ class Database
             $sth = $this->dbh->prepare($sql);
             if (!$sth) {
                 echo "\nPDO::errorInfo():\n";
-                print_r($dbh->errorInfo());
+             //   print_r($dbh->errorInfo());
             }
             $sth->execute($params);
             return $sth->fetchAll(\PDO::FETCH_OBJ);           
@@ -578,7 +581,7 @@ class Database
             $sth = $this->dbh->prepare($sql);
             if (!$sth) {
                 echo "\nPDO::errorInfo():\n";
-                print_r($this->errorInfo());
+               // print_r($this->errorInfo());
             }
             $sth->execute($matches);    
             $this->errorMessage = $sth->errorInfo();            
@@ -754,7 +757,7 @@ class Database
             $sth = $this->dbh->prepare($sql);
             if (!$sth) {
                 echo "\nPDO::errorInfo():\n";
-                print_r($sth->errorInfo());
+                //print_r($sth->errorInfo());
             }
             $sth->execute($params);
 
@@ -773,6 +776,25 @@ class Database
         }
     }   
 
+
+    /**
+     * [renderSql description]
+     * @param  [type] $table       [description]
+     * @param  [type] $variables   [description]
+     * @param  array  $constraints [description]
+     * @return [type]              [description]
+     */
+    public function renderSql($table, $variables, $constraints = array()) { 
+        $sql = $this->buildQuery($table, 'update', $variables, $constraints);        
+        $fields = $this->setVariables($sql, array_merge($variables, $constraints));
+        foreach ($fields->vars as $f => $field) { 
+            $sql = str_replace(':' . $f, "'$field'", $sql);
+        }
+        return $sql;
+    }
+
+
+
     /**
     * pre-defined to run a sql update command
     * 
@@ -786,7 +808,7 @@ class Database
     {
      
         is_object($variables) ? $variables = (array) $variables : false;    
-        $sql = $this->buildQuery($table, 'update', $variables, $constraints);
+        $sql = $this->buildQuery($table, 'update', $variables, $constraints);        
         $fields = $this->setVariables($sql, array_merge($variables, $constraints));
         $sth = $this->runQuery($sql, $fields->vars);
         $err = $sth->errorInfo();

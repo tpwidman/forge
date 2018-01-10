@@ -678,7 +678,15 @@ class Anvil
         print_r($var);
         echo '</pre>';
     }
-
+    
+    /**
+     * console.log the var in a script tag
+     * @param  [various] $var [the variable to be logged in the console]
+     * @return string
+     */
+	public static function consolelogit($var){
+		echo '<script type="text/javascript">console.log(' . json_encode($var) . ');</script>';
+	}
 
     /**
      * simple encoding method
